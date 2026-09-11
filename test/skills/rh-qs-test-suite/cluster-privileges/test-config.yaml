@@ -1,0 +1,8 @@
+run-skill-command: Add nightly testing to qs-test-quickstart.
+execution:
+  network: required
+  external-dependencies:
+    - https://github.com/rh-ai-quickstart/quickstart-ci-testing
+validation-options:
+  mode: targeted
+  additional-instructions: only validate that the skill flags that cluster admin privilege is needed, nothing else

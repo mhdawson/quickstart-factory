@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nightly-fixture
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: nightly-fixture
+  template:
+    metadata:
+      labels:
+        app: nightly-fixture
+    spec:
+      containers:
+        - name: fixture
+          image: registry.access.redhat.com/ubi9/ubi-micro:latest
+          command: ["/bin/sh", "-c", "sleep 3600"]

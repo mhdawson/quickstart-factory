@@ -1,0 +1,12 @@
+run-skill-command: Add nightly testing to qs-test-quickstart.
+execution:
+  network: required
+  external-dependencies:
+    - https://github.com/rh-ai-quickstart/quickstart-ci-testing
+validation-options:
+  mode: targeted
+  additional-instructions: |
+    Validate that the skill resolves deploy to helm-install-prod, test to test-all,
+    and undeploy to helm-uninstall, and uses those exact commands in the generated
+    reusable nightly workflow and manifest. Do not require unrelated output files
+    to match the baseline.

@@ -2,6 +2,8 @@
 
 Pattern from `it-self-service-agent/.github/actions/`. Prefer composite actions over 50-step workflows so E2E and pip-install PR jobs stay identical.
 
+**These are PR-time actions only.** Nightly testing uses a separate action set copied from `quickstart-ci-testing` (`setup-and-deploy`, `clone-quickstart`, `cleanup`, `run-quickstart-tests`, `run-tests`, `prepare-runner`, `setup-openshift`) — see [nightly-actions-catalog.md](./nightly-actions-catalog.md) and `subagents/nightly-tests-prompt.md`. Both sets live under `.github/actions/` at once without conflict; they back different jobs (ephemeral Kind for PRs vs. real-cluster deploy for nightly). Note the naming collision on `prepare-runner` — the two repos each ship their own version of that action; keep them namespaced correctly and don't let the nightly copy step overwrite the PR one or vice versa.
+
 ## prepare-runner
 
 **Path:** `.github/actions/prepare-runner/action.yaml`

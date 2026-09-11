@@ -1,0 +1,6 @@
+apiVersion: v2
+name: nightly-ci-fixture
+description: Minimal namespaced chart for rh-qs-test-suite tests
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

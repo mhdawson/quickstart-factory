@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nightly-ci-fixture.fullname" . }}
+  labels:
+    {{- include "nightly-ci-fixture.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "nightly-ci-fixture.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "nightly-ci-fixture.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: fixture
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command: ["/bin/sh", "-c", "sleep 3600"]
+          env:
+            - name: MODEL_ID
+              value: {{ .Values.model.id | quote }}
+            - name: MODEL_URL
+              value: {{ .Values.model.url | quote }}
+            - name: MODEL_API_KEY
+              value: {{ .Values.model.apiKey | quote }}

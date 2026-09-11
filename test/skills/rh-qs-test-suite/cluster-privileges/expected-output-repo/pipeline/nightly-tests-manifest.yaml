@@ -1,0 +1,45 @@
+slug: qs-test-quickstart
+resolved_targets:
+  deploy: deploy
+  test: test
+  undeploy: undeploy
+toolchain_setup_steps: []
+branch_model:
+  main: main
+  dev: null
+namespace: qs-test-quickstart-ci-project-1
+service_account: qs-test-quickstart-ci-1
+cluster_admin_check:
+  status: flagged
+  detail: helm/templates/cluster-role.yaml defines a ClusterRole, which requires cluster-scoped permissions.
+required_secrets:
+  - name: PROD_TOKEN
+    reason: ServiceAccount token for the nightly CI namespace
+  - name: PROD_SERVER
+    reason: OpenShift API server URL for the cluster nightly deploys to
+  - name: MODEL_API_KEY
+    reason: API key required by the deploy and test Makefile targets
+required_variables:
+  - name: MODEL_ID
+    reason: Model deployment ID required by the deploy and test Makefile targets
+  - name: MODEL_URL
+    reason: Model API URL required by the deploy and test Makefile targets
+unconfirmed:
+  - No toolchain setup step added; Helm is invoked by the Makefile, but no pinned version or existing workflow establishes a setup action.
+files:
+  actions_copied:
+    - cleanup
+    - clone-quickstart
+    - prepare-runner
+    - run-quickstart-tests
+    - run-tests
+    - setup-and-deploy
+    - setup-kind
+    - setup-openshift
+  actions_skipped_identical: []
+  actions_updated: []
+  workflows_created:
+    - .github/workflows/test-qs-test-quickstart.yml
+    - .github/workflows/nightly-main.yml
+  workflows_skipped_or_updated: []
+  provisioning_script: scripts/ci/setup-nightly-namespace.sh

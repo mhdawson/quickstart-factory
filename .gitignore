@@ -49,3 +49,6 @@ data/
 .tmp/
 brain.ai
 brain.code-workspace
+
+# Fixture validation reports and captured disposable quickstart output.
+test/skills/reports/

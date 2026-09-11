@@ -1,0 +1,57 @@
+name: Test qs-test-quickstart
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to deploy and test
+        default: main
+        type: string
+
+concurrency:
+  group: qs-test-quickstart-ci-testing
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: qs-test-quickstart (${{ inputs.branch }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup and deploy
+        uses: ./.github/actions/setup-and-deploy
+        timeout-minutes: 15
+        with:
+          repo_url: https://github.com/${{ github.repository }}
+          ref: ${{ inputs.branch }}
+          namespace: qs-test-quickstart-ci-project-1
+          deploy_command: "make deploy"
+        env:
+          PROD_TOKEN: ${{ secrets.PROD_TOKEN }}
+          PROD_SERVER: ${{ secrets.PROD_SERVER }}
+          MODEL_ID: ${{ vars.MODEL_ID }}
+          MODEL_URL: ${{ vars.MODEL_URL }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+
+      - name: Run tests
+        uses: ./.github/actions/run-quickstart-tests
+        timeout-minutes: 30
+        with:
+          test_command: "make test"
+          upload_results: "test-results"
+        env:
+          MODEL_ID: ${{ vars.MODEL_ID }}
+          MODEL_URL: ${{ vars.MODEL_URL }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+
+      - name: Cleanup
+        if: always()
+        uses: ./.github/actions/cleanup
+        with:
+          cleanup_command: "make undeploy"

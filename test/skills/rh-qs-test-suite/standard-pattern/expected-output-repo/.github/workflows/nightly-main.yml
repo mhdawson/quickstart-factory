@@ -1,0 +1,13 @@
+name: Nightly - qs-test-quickstart (main)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * *"
+
+jobs:
+  test:
+    uses: ./.github/workflows/test-qs-test-quickstart.yml
+    with:
+      branch: main
+    secrets: inherit

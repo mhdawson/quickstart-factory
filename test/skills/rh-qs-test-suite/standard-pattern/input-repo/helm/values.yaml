@@ -1,0 +1,10 @@
+replicaCount: 1
+
+image:
+  repository: registry.access.redhat.com/ubi9/ubi-micro
+  tag: latest
+
+model:
+  id: ""
+  url: ""
+  apiKey: ""
