@@ -9,6 +9,12 @@ Code and Cursor, and explicit skill activation language for Codex and Gemini.
 The case-runner prompt is supplemental execution policy; it must not load or
 replay the target `SKILL.md` itself.
 
+The Codex adapter uses `$skill-name` activation and starts from the Factory
+repository root so repo-scoped skills are discovered the same way they are in
+normal Factory use. The fixed disposable quickstart remains the case input and
+target-output path. The launcher keeps Git commands inside that fixture from
+inheriting the Factory repository's branch metadata.
+
 The coordinator or the process wrapper must provide the actual execution
 boundary:
 

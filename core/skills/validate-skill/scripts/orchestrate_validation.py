@@ -220,13 +220,6 @@ def conversation_from_runner(runner_result: dict[str, Any]) -> list[dict[str, st
     return conversation if isinstance(conversation, list) else []
 
 
-def render_prompt(template: str, replacements: dict[str, str]) -> str:
-    rendered = template
-    for name, value in replacements.items():
-        rendered = rendered.replace("{" + name + "}", value)
-    return rendered
-
-
 def dependency_domains(dependencies: list[str]) -> list[str]:
     domains = []
     for dependency in dependencies:
@@ -401,20 +394,15 @@ def main() -> int:
 
         runner_output = report_dir / "runner-result.yaml"
         completion_output = report_dir / "completion.json"
-        case_replacements = {
-            "case_path": str(case_path),
-            "quickstart_root": str((root / ".rhoai-qs" / "qs-test-quickstart").resolve()),
-            "runner_output": str(runner_output.resolve()),
-        }
         if args.runner_adapter:
-            runner_prompt = render_prompt(args.runner_prompt_file.read_text(), case_replacements)
+            runner_prompt = args.runner_prompt_file.read_text()
             runner_prompt += (
                 "\n\nValidation inputs:\n"
                 f"target_skill_name={args.skill_name}\n"
                 f"target_skill_path={(root / 'core/skills' / args.skill_name).resolve()}\n"
                 f"target_prompt={case.get('run_skill_command') or 'none'}\n"
                 f"fixture_root={case_path}\n"
-                f"quickstart_root={case_replacements['quickstart_root']}\n"
+                f"quickstart_root={(root / '.rhoai-qs' / 'qs-test-quickstart').resolve()}\n"
                 f"execution_network={case.get('execution_network', 'none')}\n"
                 f"external_dependencies={case.get('external_dependencies', [])}\n"
             )
@@ -503,24 +491,21 @@ def main() -> int:
             comparison = {"case": case["name"], "differences": [{"kind": "invalid-comparison", "detail": str(error)}], "extra_files": [], "extra_paths": []}
         write_json(report_dir / "comparison.json", comparison)
 
-        replacements = {
-            "case_path": str(case_path),
+        rater_inputs = {
             "conversation_json": str(conversation_path),
             "comparison_json": str(report_dir / "comparison.json"),
             "quickstart_root": str((root / ".rhoai-qs" / "qs-test-quickstart").resolve()),
-            "rater_output": str((report_dir / "rater-result.yaml").resolve()),
-            "runner_output": str(runner_output.resolve()),
         }
         if args.rater_adapter:
-            rater_prompt = render_prompt(args.rater_prompt_file.read_text(), replacements)
+            rater_prompt = args.rater_prompt_file.read_text()
             rater_prompt += (
                 "\n\nEvaluation inputs:\n"
                 f"fixture_contract_path={(root / 'core/skills/validate-skill/references/fixture-contract.md').resolve()}\n"
                 f"expected_output_root={(case_path / 'expected-output-repo').resolve()}\n"
-                f"actual_quickstart_root={replacements['quickstart_root']}\n"
+                f"actual_quickstart_root={rater_inputs['quickstart_root']}\n"
                 f"case_name={case['name']}\n"
-                f"comparison_json={replacements['comparison_json']}\n"
-                f"conversation={replacements['conversation_json']}\n"
+                f"comparison_json={rater_inputs['comparison_json']}\n"
+                f"conversation={rater_inputs['conversation_json']}\n"
                 f"validation_mode={case.get('validation_mode', 'full-baseline')}\n"
                 f"additional_validation_instructions={case.get('additional_validation_instructions') or 'null'}\n"
             )
@@ -537,7 +522,15 @@ def main() -> int:
             rater_error = None
         else:
             try:
-                rater = expand(rater_command, replacements)
+                rater = expand(
+                    rater_command,
+                    {
+                        **rater_inputs,
+                        "case_path": str(case_path),
+                        "rater_output": str((report_dir / "rater-result.yaml").resolve()),
+                        "runner_output": str(runner_output.resolve()),
+                    },
+                )
             except ValueError as error:
                 rater = []
                 rater_error = str(error)

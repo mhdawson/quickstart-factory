@@ -35,11 +35,24 @@ def main() -> int:
     parser.add_argument("--allowed-domain", action="append", default=[])
     args = parser.parse_args()
 
+    repository_root = None
+    if args.adapter == "codex" and args.skill_name:
+        if args.skill_name in {".", ".."} or Path(args.skill_name).name != args.skill_name:
+            raise SystemExit(f"invalid repo-scoped skill name: {args.skill_name!r}")
+        # Codex discovers repo-scoped skills from the Factory root. The target
+        # quickstart remains a separate input used for Git isolation and the
+        # target skill's generated files.
+        repository_root = Path(__file__).resolve().parents[4]
+        skill_entry = repository_root / ".codex" / "skills" / args.skill_name / "SKILL.md"
+        if not skill_entry.is_file():
+            raise SystemExit(f"repo-scoped skill entry not found: {skill_entry}")
+
     request = RunnerRequest(
         prompt=args.prompt,
         workspace=args.workspace.resolve(),
         output_path=args.output.resolve(),
         skill_name=args.skill_name,
+        repository_root=repository_root,
         network_profile=args.network_profile,
         allowed_domains=tuple(args.allowed_domain),
     )
@@ -58,7 +71,7 @@ def main() -> int:
 
     completed = subprocess.run(
         list(spec.command),
-        cwd=request.workspace,
+        cwd=repository_root or request.workspace,
         env=environment,
         capture_output=True,
         text=True,

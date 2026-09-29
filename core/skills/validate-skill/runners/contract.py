@@ -19,6 +19,7 @@ class RunnerRequest:
     workspace: Path
     output_path: Path
     skill_name: str | None = None
+    repository_root: Path | None = None
     network_profile: str = "isolated"
     allowed_domains: tuple[str, ...] = field(default_factory=tuple)
 

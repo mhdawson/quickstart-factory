@@ -77,8 +77,7 @@ background agents or broaden filesystem access. Use `--runner-adapter` and
 client adapter should own command construction. Raw command arrays remain
 supported for custom runners.
 
-The coordinator supports these placeholders in raw command arguments and
-adapter prompt files:
+The coordinator supports these placeholders in raw command arguments:
 
 - `{runner_output}` — runner result YAML path
 - `{rater_output}` — independent-rater result YAML path
@@ -87,8 +86,13 @@ adapter prompt files:
 - `{comparison_json}` — baseline comparison JSON path
 - `{conversation_json}` — runner conversation JSON path
 
-It rejects unknown or unresolved placeholders. The runner command is responsible
-for providing the execution capabilities required by the selected fixtures:
+Adapter prompt files are passed through as written. The coordinator appends
+the case-specific inputs to each prompt; placeholders in the prompt file are
+not expanded.
+
+Unknown or unresolved placeholders in raw command arguments are rejected. The
+runner command is responsible for providing the execution capabilities required
+by the selected fixtures:
 
 - For any case whose fixture declares `execution.network: required`, invoke the
   coordinator with `--network-profile network` and run the case runner in a

@@ -27,8 +27,9 @@ class CodexAdapter:
     def build(self, request: RunnerRequest) -> RunnerSpec:
         prompt = request.prompt
         if request.skill_name:
-            prompt = f"Use the `{request.skill_name}` skill for this task.\n\n{prompt}"
+            prompt = f"Use the ${request.skill_name} skill for this task.\n\n{prompt}"
         prompt += _RAW_YAML_REMINDER
+        working_root = request.repository_root or request.workspace
         command = [
             "codex",
             "exec",
@@ -39,7 +40,7 @@ class CodexAdapter:
             "--sandbox",
             "workspace-write",
             "--cd",
-            str(request.workspace),
+            str(working_root),
             "--output-last-message",
             str(request.output_path),
             "--",
