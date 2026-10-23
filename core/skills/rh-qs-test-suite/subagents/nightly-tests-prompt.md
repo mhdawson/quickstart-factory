@@ -81,7 +81,7 @@ If nothing is found, record "No cluster-admin requirement detected." If somethin
 
 ### Step 5: Detect the branch model
 
-Determine the default branch (normally `main`) and whether a second long-lived branch exists (`dev`, `development`, or `develop` — check for all three; use whichever exists). If no second branch exists, you will generate only `nightly-main.yml` in Step 9 and note in your report that the dev nightly was skipped.
+Determine the default branch and whether a second long-lived branch exists (`dev`, `development`, or `develop` — check for all three; use whichever exists) from Git metadata when it is available. If no Git metadata is available, assume `main` is the only branch; do not ask the user in this case. If no second branch exists, generate only `nightly-main.yml` in Step 9, use `dev: null` in the manifest, and note in your report that Git metadata was unavailable and the main-only branch model was assumed.
 
 ### Step 6: Copy composite actions from quickstart-ci-testing
 

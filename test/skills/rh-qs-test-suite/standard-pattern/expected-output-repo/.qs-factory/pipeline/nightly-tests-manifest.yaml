@@ -1,0 +1,52 @@
+slug: qs-test-quickstart
+resolved_targets:
+  deploy: deploy
+  test: test
+  undeploy: undeploy
+toolchain_setup_steps:
+- action: astral-sh/setup-uv@v6
+  with:
+    version: 0.5.24
+  source: Makefile UV_VERSION and README prerequisites
+branch_model:
+  main: main
+  dev: null
+namespace: qs-test-quickstart-ci-project-1
+service_account: qs-test-quickstart-ci-1
+cluster_admin_check:
+  status: clean
+  detail: No cluster-admin requirement detected; chart contains a namespaced Deployment
+    and has no subchart dependencies.
+required_secrets:
+- name: PROD_TOKEN
+  reason: ServiceAccount token for the nightly CI namespace
+- name: PROD_SERVER
+  reason: OpenShift API server URL for the cluster nightly deploys to
+- name: MODEL_API_KEY
+  reason: Required by check-model-config prerequisite of deploy and test; passed to
+    Helm model.apiKey by deploy.
+required_variables:
+- name: MODEL_ID
+  reason: Required by check-model-config prerequisite of deploy and test; passed to
+    Helm model.id by deploy.
+- name: MODEL_URL
+  reason: Required by check-model-config prerequisite of deploy and test; passed to
+    Helm model.url by deploy.
+unconfirmed: []
+files:
+  actions_copied:
+  - .github/actions/cleanup
+  - .github/actions/clone-quickstart
+  - .github/actions/prepare-runner
+  - .github/actions/run-quickstart-tests
+  - .github/actions/run-tests
+  - .github/actions/setup-and-deploy
+  - .github/actions/setup-kind
+  - .github/actions/setup-openshift
+  actions_skipped_identical: []
+  actions_updated: []
+  workflows_created:
+  - .github/workflows/test-qs-test-quickstart.yml
+  - .github/workflows/nightly-main.yml
+  workflows_skipped_or_updated: []
+  provisioning_script: scripts/ci/setup-nightly-namespace.sh
