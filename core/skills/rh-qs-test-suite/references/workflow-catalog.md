@@ -34,8 +34,7 @@ with:
 
 | File | Trigger | Purpose |
 |------|---------|---------|
-| `build-and-push.yaml` | `push` to `main`, `dev` | `if: github.repository_owner == 'rh-ai-quickstart'`; version from `make version`; multi-tag push to `quay.io/rh-ai-quickstart` |
-| `build-and-push-manual.yaml` | `workflow_dispatch` | Manual image build |
+| `build-and-push.yaml` | `push` to `main`, `dev`; `workflow_dispatch` | Self-contained workflow from [the local build-and-push reference](./build-and-push-workflow.yaml); uses `make version`, `make build-all-images`, and `make push-all-images`; manual dispatch can set `FORCE_BUILD_ALL=TRUE` to override the optional image-needed target; excludes forks |
 | `create-dev-to-main-pr.yaml` | `workflow_dispatch` | GitHub App token; version sync Makefile ↔ Chart.yaml ↔ values image tags; temp branch `dev-<short-sha>` |
 | `create-dev-version-bump-pr.yml` | `workflow_dispatch` | Automated version bump on dev |
 

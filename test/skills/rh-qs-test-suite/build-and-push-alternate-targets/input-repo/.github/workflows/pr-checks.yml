@@ -1,0 +1,9 @@
+name: PR checks
+on:
+  pull_request:
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: make test-all

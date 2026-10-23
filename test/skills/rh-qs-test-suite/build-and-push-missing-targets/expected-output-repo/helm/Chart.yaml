@@ -1,0 +1,4 @@
+apiVersion: v2
+name: qs-test-quickstart
+version: 0.1.0
+description: Quickstart fixture without image publishing targets

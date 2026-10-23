@@ -172,6 +172,19 @@ Summarize what was created/updated/skipped, then always include:
 3. **Required secrets/variables**, names and explanations only, split into Secrets and Variables, plus any "found but unconfirmed" entries — never invent or ask for actual values.
 4. **Next steps**: run `scripts/ci/setup-nightly-namespace.sh` against the target cluster, set the printed `PROD_TOKEN`/`PROD_SERVER` plus every other listed secret/variable in GitHub, then trigger `test-<slug>.yml` via `workflow_dispatch` once to confirm it's green before relying on the schedule.
 
+## Verification
+
+Before reporting completion:
+
+1. Confirm every file you claim to have created or updated actually exists at
+   its declared path under the quickstart repository root.
+2. Confirm the reusable workflow, at least one nightly caller, the provisioning
+   script, and the nightly manifest are present.
+3. Confirm no unrelated file was created, updated, or deleted.
+4. Parse every generated YAML file and run `bash -n` on the provisioning script.
+5. If any required artifact is missing or any check fails, report failure rather
+   than claiming success.
+
 ## Output
 
 `.qs-factory/pipeline/nightly-tests-manifest.yaml` (schema above) plus the report described in Step 11, returned as your final message to the orchestrator.
