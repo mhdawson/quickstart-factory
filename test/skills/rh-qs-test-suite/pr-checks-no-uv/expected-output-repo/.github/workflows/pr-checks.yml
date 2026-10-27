@@ -1,0 +1,74 @@
+name: Pull Request - Quality Checks & Unit Tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  code-quality-check:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Check requirements files
+        run: make check-requirements
+
+      - name: Install dependencies
+        run: make deps-all
+
+      - name: Run lint
+        run: make lint
+
+  helm-export-validate:
+    name: Helm export validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.17.0
+
+      - uses: bmuschko/setup-kubeconform@v1
+
+      - name: Validate rendered Helm manifests
+        run: make helm-export-validate-demo
+        env:
+          NAMESPACE: ci-demo
+          HF_TOKEN: mock_hf_token_for_ci
+
+  pull-request-tests:
+    name: Run unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: make deps-all
+
+      - name: Run unit tests
+        run: make test-all

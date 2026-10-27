@@ -1,0 +1,5 @@
+apiVersion: v2
+name: qs-test-quickstart
+description: Minimal chart for missing-target PR-check validation
+type: application
+version: 0.1.0
