@@ -49,7 +49,9 @@ workflow merely to make the generated workflow work.
 - [ ] 2. Add Makefile CI targets (see references/makefile-ci-contract.md)
 - [ ] 3. Add scripts/ci/kind-with-registry.sh (Podman-compatible)
 - [ ] 4. Add composite actions (prepare-runner, kind, inspect)
-- [ ] 5. Add PR workflows (checks, e2e, branch policy — as needed)
+- [ ] 5. Add PR workflows (checks, e2e, branch policy — as needed), starting from
+      the matching workflow skeleton and adapting only repo-specific setup and
+      Make targets
 - [ ] 6. Configure repo secrets/vars (see references/secrets-and-variables.md)
 - [ ] 7. When publishing images, invoke `subagents/build-and-push-prompt.md` to add the self-contained workflow for push to main/dev and manual dispatch
 - [ ] 8. When design requires nightly testing, invoke `subagents/nightly-tests-prompt.md`; add dev→main promotion workflow separately if needed
@@ -62,7 +64,7 @@ workflow merely to make the generated workflow work.
 | Principle | Practice |
 |-----------|----------|
 | Makefile as CI API | Workflows run `make <target>`; no duplicated install logic in YAML |
-| Pin tool versions | `UV_VERSION` (and Helm) in workflow `env` must match `Makefile` |
+| Pin tool versions | Pin the tools this quickstart uses; when it uses uv, workflow `UV_VERSION` must match the Makefile |
 | Concurrency | `group: ${{ github.workflow }}-${{ github.event.pull_request.number }}` + `cancel-in-progress: true` on PRs |
 | Split by risk/cost | Fast lint/unit on `pull_request`; heavy Kind/evals on `pull_request_target` or schedule |
 | Fail fast on secrets | First step validates required secrets before checkout/cluster work |
@@ -74,7 +76,7 @@ workflow merely to make the generated workflow work.
 
 | Workflow file | Trigger | Purpose |
 |---------------|---------|---------|
-| `pr-checks.yml` | `pull_request` | Lockfiles, lint, mypy/ruff, helm export/kubeconform, unit tests |
+| `pr-checks.yml` | `pull_request` | Applicable dependency checks, lint, mypy/ruff, Helm export/kubeconform, unit tests |
 | `pr-e2e-tests.yml` | `pull_request_target`, schedule, `workflow_dispatch` | Kind deploy + integration + short evals |
 | `pr-pip-install-build.yml` | `pull_request` | Validate alternate install path (`use_pip_install`) |
 | `pr-evaluation-check.yml` | `pull_request_target` | Known-bad conversation / regression eval gate |
@@ -117,7 +119,9 @@ Details and inputs: [references/composite-actions.md](./references/composite-act
 
 ## Makefile CI contract
 
-Implement these targets (names can alias existing ones):
+Add or map only the targets needed by the selected workflows. Preserve target
+names already present in the quickstart; treat this list as the CI contract for
+features the quickstart actually uses, not as a requirement to add every target.
 
 | Target | Used by |
 |--------|---------|
@@ -135,6 +139,36 @@ Implement these targets (names can alias existing ones):
 | `test-*-integration` | Named integration tests from design |
 
 Full list: [references/makefile-ci-contract.md](./references/makefile-ci-contract.md)
+
+### Adapt PR checks to the quickstart
+
+Before generating `pr-checks.yml`, inspect the quickstart's `Makefile`, dependency
+manifests, and existing workflows. The repository's actual commands and targets
+are authoritative; the reference contract and workflow skeleton are examples,
+not a requirement to add uv or to call every canonical target.
+
+- Preserve existing Make target names. Do not rename a target or invent a
+  replacement such as `check-requirements` when the repository already exposes
+  the requested behavior under another name.
+- Add a missing target only when the user requests it or it is needed for the
+  requested workflow, and ensure the final workflow calls the target that was
+  actually added.
+- Select dependency setup from the repository's manifests and Makefile. For a
+  pip/requirements quickstart, use pinned Python setup and its existing
+  requirements check; do not add uv setup, `UV_VERSION`, or uv-specific checks
+  unless the repository uses uv and those Make targets exist.
+- When adding a pip install target, make it depend on the existing requirements
+  check. When adding a Helm render target, preserve the Makefile's namespace
+  default; if none exists, use the quickstart's established default and let CI
+  override it for its namespace.
+- Before reporting completion, read the generated workflow and confirm every
+  `make <target>` call exists in the final Makefile. Confirm required existing
+  targets are called directly when the request requires that, even if another
+  target depends on them. Give workflow jobs the descriptive names used by
+  required status checks. Preserve the selected skeleton's workflow name, PR
+  event types, pinned action versions, and Python version unless repository
+  configuration or the user requires a different value. Keep Makefile defaults
+  unchanged unless the request requires a change.
 
 Build-and-push generation is delegated to [the dedicated prompt](./subagents/build-and-push-prompt.md). It resolves the version, build, and publish targets from the quickstart's Makefile and README, asks for missing or ambiguous mappings before writing anything, and never substitutes canonical target names for absent targets.
 

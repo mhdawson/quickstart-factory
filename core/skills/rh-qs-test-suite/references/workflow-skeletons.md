@@ -1,8 +1,12 @@
 # Workflow skeletons
 
 Trimmed patterns from `it-self-service-agent`. Replace names, makes, and namespaces for `<slug>`.
+These are examples, not a universal contract: the PR-checks example below is
+for a uv-based quickstart. Inspect the quickstart's Makefile and dependency
+manifests first, and adapt setup and targets to that repository as described in
+the PR-check adaptation guidance in `SKILL.md`.
 
-## Shared PR preamble
+## PR trigger and concurrency preamble
 
 ```yaml
 on:
@@ -13,24 +17,26 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
-env:
-  UV_VERSION: "0.8.9"   # must match Makefile
 ```
 
-## pr-checks.yml — quality + unit + helm
+## pr-checks.yml — uv quickstart with matching Make targets
 
 ```yaml
 name: Pull Request - Quality Checks & Unit Tests
 
+env:
+  UV_VERSION: "0.8.9" # replace with the quickstart's Makefile value
+
 jobs:
   code-quality-check:
+    name: Code Quality Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v9
         with:
           version: ${{ env.UV_VERSION }}
       - run: make check-uv-version
@@ -39,9 +45,10 @@ jobs:
       - run: make lint
 
   helm-export-validate:
+    name: Helm export validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: azure/setup-helm@v4
         with:
           version: v3.17.0
@@ -52,10 +59,11 @@ jobs:
           HF_TOKEN: mock_hf_token_for_ci
 
   pull-request-tests:
+    name: Run unit-tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v9
         with:
           version: ${{ env.UV_VERSION }}
       - run: make deps-all

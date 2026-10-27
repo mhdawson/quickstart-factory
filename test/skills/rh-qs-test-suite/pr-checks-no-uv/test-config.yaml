@@ -1,0 +1,7 @@
+run-skill-command: Bring pr-checks.yml up to the factory standard for qs-test-quickstart.
+validation-options:
+  mode: full-baseline
+  additional-instructions: |
+    Confirm that the generated PR workflow omits uv setup and uv version checks,
+    retains pinned Python setup, uses only Makefile targets for dependency,
+    lint, Helm, and test execution, and does not modify unrelated files.

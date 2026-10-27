@@ -1,0 +1,54 @@
+name: Pull Request - Quality Checks & Unit Tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  code-quality-check:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: make check-deps
+      - run: make deps-all
+      - run: make lint
+
+  helm-export-validate:
+    name: Helm export validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.17.0
+
+      - uses: bmuschko/setup-kubeconform@v1
+
+      - run: make helm-export-validate-demo
+        env:
+          NAMESPACE: ci-demo
+          HF_TOKEN: mock_hf_token_for_ci
+
+  pull-request-tests:
+    name: Run unit-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: make deps-all
+      - run: make test-all

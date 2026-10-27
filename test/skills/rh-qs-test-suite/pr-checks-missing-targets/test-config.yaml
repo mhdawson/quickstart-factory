@@ -1,0 +1,26 @@
+run-skill-command: Bring pr-checks.yml up to the factory standard for qs-test-quickstart.
+question-answer-context: |
+  This fixture uses pip and requirements files. If the skill asks how to map
+  the existing requirements target, use check-deps exactly as-is; do not rename
+  it and do not create check-requirements. If the skill asks about missing
+  targets, create deps-all to run python -m pip install -r requirements.txt
+  -r requirements-dev.txt, with deps-all depending on check-deps. Create
+  helm-export-validate-demo to render the Helm chart and validate it with
+  kubeconform, using NAMESPACE ?= default in the Makefile and allowing the
+  workflow to override it with NAMESPACE=ci-demo. Keep the existing lint and
+  test-all targets. Do not introduce uv.
+validation-options:
+  mode: full-baseline
+  additional-instructions: |
+    Confirm that the skill reuses the existing check-deps target without
+    renaming it or creating check-requirements, creates the missing deps-all
+    and helm-export-validate-demo targets, and calls check-deps plus the new
+    targets in the generated PR workflow. The repository uses pip and
+    requirements files: the workflow must not set up uv or call
+    check-uv-version/check-lockfiles, which are not defined in the Makefile.
+    Make deps-all depend on check-deps. Preserve NAMESPACE ?= default in the
+    Makefile, use $(NAMESPACE) in the Helm target, and pass the CI namespace
+    through the workflow. Name the workflow jobs Code Quality Check, Helm
+    export validation, and Run unit-tests. Preserve the workflow name, pull
+    request event types, and pinned setup action/Python versions from the PR
+    checks skeleton. Do not modify unrelated files.

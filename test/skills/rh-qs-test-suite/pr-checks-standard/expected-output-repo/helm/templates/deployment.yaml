@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qs-test-quickstart
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: qs-test-quickstart
+  template:
+    metadata:
+      labels:
+        app: qs-test-quickstart
+    spec:
+      containers:
+        - name: fixture
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
