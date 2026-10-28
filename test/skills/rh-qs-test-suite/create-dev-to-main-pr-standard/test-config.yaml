@@ -1,0 +1,14 @@
+run-skill-command: Add the dev-to-main promotion and dev version-bump workflows to qs-test-quickstart.
+validation-options:
+  mode: full-baseline
+  additional-instructions: |
+    Confirm that the skill creates .github/workflows/create-dev-to-main-pr.yml,
+    .github/workflows/create-dev-to-main-bump-r.yml, and scripts/bump_release.py
+    with scripts/bump-release.manifest.json. Confirm both workflows use
+    workflow_dispatch and the configured GitHub App credentials. The bump
+    workflow must update the release manifest and create or update a PR into
+    dev. The promotion workflow must invoke scripts/bump_release.py --verify
+    for both the dev target commit and origin/main, require the dev version to
+    be later than main, create a temporary dev-<short-sha> branch, and open a
+    PR from that branch to main. The complete expected output tree remains
+    authoritative.

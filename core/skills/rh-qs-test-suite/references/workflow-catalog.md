@@ -38,8 +38,8 @@ with:
 | File | Trigger | Purpose |
 |------|---------|---------|
 | `build-and-push.yaml` | `push` to `main`, `dev`; `workflow_dispatch` | Self-contained workflow from [the local build-and-push reference](./build-and-push-workflow.yaml); uses `make version`, `make build-all-images`, and `make push-all-images`; manual dispatch can set `FORCE_BUILD_ALL=TRUE` to override the optional image-needed target; excludes forks |
-| `create-dev-to-main-pr.yaml` | `workflow_dispatch` | GitHub App token; version sync Makefile ↔ Chart.yaml ↔ values image tags; temp branch `dev-<short-sha>` |
-| `create-dev-version-bump-pr.yml` | `workflow_dispatch` | Automated version bump on dev |
+| `create-dev-to-main-pr.yml` | `workflow_dispatch` | GitHub App token; runs `scripts/bump_release.py --verify`, requires dev version to be later than main, and creates temp branch `dev-<short-sha>` |
+| `create-dev-to-main-bump-r.yml` | `workflow_dispatch` | Bumps the dev release version (or accepts a requested higher version) and opens or updates a GitHub App-authenticated PR into `dev` |
 
 ## Scheduled / nightly
 
@@ -64,4 +64,4 @@ Full action inventory, skeletons, and the namespace/ServiceAccount provisioning 
 | API + DB integration on Kind | `pr-e2e-tests.yml` + `kind` action |
 | LLM quality / RAG evals | `pr-e2e-tests.yml` + `pr-evaluation-check.yml` + eval artifact steps |
 | Published images | `build-and-push.yaml` |
-| dev/main git flow | `pr-branch-check.yml` + `create-dev-to-main-pr.yaml` |
+| dev/main git flow | `pr-branch-check.yml` + `create-dev-to-main-bump-r.yml` + `create-dev-to-main-pr.yml` |
