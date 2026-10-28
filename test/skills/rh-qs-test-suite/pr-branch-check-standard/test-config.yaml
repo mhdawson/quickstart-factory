@@ -1,0 +1,9 @@
+run-skill-command: Add the dev-to-main pr-branch-check.yml workflow to qs-test-quickstart.
+validation-options:
+  mode: full-baseline
+  additional-instructions: |
+    Confirm that the skill creates .github/workflows/pr-branch-check.yml with
+    the pull_request trigger targeting main, the validate-pr-branch job, and
+    inline validation that rejects forks and accepts only dev or dev-<hex>
+    source branches from the same repository. Confirm that it does not modify
+    unrelated files.
