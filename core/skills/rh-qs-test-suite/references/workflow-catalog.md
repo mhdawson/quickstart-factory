@@ -12,7 +12,6 @@ manager; do not add uv or lockfile steps just because they appear here.
 | File | Workflow name | Jobs | Makefile / notes |
 |------|---------------|------|------------------|
 | `pr-checks.yml` | Pull Request - Quality Checks & Unit Tests | `code-quality-check`, `helm-export-validate`, `pull-request-tests` | Dependency/version checks supported by this quickstart, `deps-all`, flake8/black/isort/mypy or `make lint`, `helm-export-validate-demo`, `test-all` |
-| `pr-pip-install-build.yml` | Pull Request - Build Test (pip install method) | `build-test-pip-install` | Same Kind path with `use_pip_install: "true"` on kind action |
 | `pr-branch-check.yml` | Require dev branch for main PRs | `validate-pr-branch` | Inline bash: source must be `dev` or `dev-<hex>` from same repo |
 
 **Triggers:** `pull_request` types `[opened, synchronize, reopened]`  
@@ -30,8 +29,7 @@ with:
 
 | File | Workflow name | Jobs | Notes |
 |------|---------------|------|-------|
-| `pr-e2e-tests.yml` | Pull Request - Integration + End to End Tests | `e2e-tests` | Validates `LLM_API_TOKEN_EVAL`; `prepare-runner` → `kind` → integration makes → `sync-evaluations` → short eval; daily cron `0 2 * * *` |
-| `pr-evaluation-check.yml` | Pull Request - Evaluation Check | `evaluation-check` | `make check-known-bad-conversations` without full cluster |
+| `pr-e2e-tests.yml` | Pull Request - Integration + End to End Tests | `e2e-tests` | Validates `LLM_API_TOKEN_EVAL`; uses shared `quickstart-ci-testing` actions (`setup-and-deploy`, `run-quickstart-tests`, `cleanup`) on Kind; daily cron `0 2 * * *` |
 
 ## Push / release
 
@@ -61,7 +59,7 @@ Full action inventory, skeletons, and the namespace/ServiceAccount provisioning 
 |---------------------|------------------|
 | Unit + lint only | `pr-checks.yml` (or keep scaffold `ci.yaml`) |
 | Helm render validation | `pr-checks.yml` → `helm-export-validate` job |
-| API + DB integration on Kind | `pr-e2e-tests.yml` + `kind` action |
-| LLM quality / RAG evals | `pr-e2e-tests.yml` + `pr-evaluation-check.yml` + eval artifact steps |
+| API + DB integration on Kind | `pr-e2e-tests.yml` + shared `quickstart-ci-testing` actions |
+| LLM quality / RAG evals | `pr-e2e-tests.yml` + eval artifact steps |
 | Published images | `build-and-push.yaml` |
 | dev/main git flow | `pr-branch-check.yml` + `create-dev-to-main-bump-r.yml` + `create-dev-to-main-pr.yml` |

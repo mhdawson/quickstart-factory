@@ -26,6 +26,10 @@ execution:
   network: required
   external-dependencies:
     - https://github.com/rh-ai-quickstart/quickstart-ci-testing
+baseline-dependencies:
+  - name: quickstart-ci-testing
+    repository: https://github.com/rh-ai-quickstart/quickstart-ci-testing
+    ref: main
 ```
 
 To run the target skill without a supplemental prompt, use an empty mapping:
@@ -43,6 +47,8 @@ To run the target skill without a supplemental prompt, use an empty mapping:
 `validation-options.mode` is optional and defaults to `full-baseline`.
 
 `execution` is optional and defaults to no network requirement. Set `execution.network: required` when the target skill must reach an external service or repository. List each required Git repository under `external-dependencies`; the validator preflights these with `git ls-remote` and must launch the case runner in a network-enabled execution context. The runner command must also have read/write access to the repository and the fixed disposable path `.rhoai-qs/qs-test-quickstart/`. `--network-profile network` declares the required execution profile but does not grant permissions by itself. A failed preflight is recorded as infrastructure evidence, but does not authorize skipping target-skill execution.
+
+`baseline-dependencies` is an optional list of repositories whose current contents are part of the expected-output baseline. Each entry has a unique `name`, a `repository` URL also listed under `execution.external-dependencies`, and a `ref` (default `main`). Before selected cases run, the coordinator refreshes each dependency once into `test/skills/<skill-name>/.shared-dependencies/<name>` and records its commit. Expected-output symlinks may point into that cache. The comparator follows them only when their resolved target is inside a declared baseline-dependency cache; symlinks in the actual quickstart output are not counted as generated files.
 
 The validator's case-runner gate is synchronous: `run_case.py` waits for the runner process to exit, accepts only a runner result with `status: completed`, and then creates the validator-owned output manifest and tree hash. Baseline comparison and rating must not start until that completion record exists. Raw runner and rater command arguments may use their documented placeholders; these are expanded without invoking a shell. Adapter prompt files are passed through as written, with case-specific inputs appended by the coordinator; placeholders in prompt files are not expanded.
 

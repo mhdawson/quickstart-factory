@@ -52,6 +52,7 @@ override.
 | `namespace` | `NAMESPACE=<test>` |
 | `helm-install-test` | Chart install with `LLM`, `LLM_ID`, `LLM_URL`, `LLM_API_TOKEN`, Kind-specific `--set` |
 | `helm-uninstall` | Cleanup prod/nightly namespaces |
+| `test-short-e2e` | PR E2E |
 
 ## Integration tests (name per quickstart)
 
@@ -69,7 +70,6 @@ Examples from it-self-service-agent—replace with design-specific targets:
 | Target | CI usage |
 |--------|----------|
 | `sync-evaluations` | Install eval harness deps (separate uv project or extra) |
-| `check-known-bad-conversations` | Regression gate without full deploy |
 
 ## Release / versioning
 

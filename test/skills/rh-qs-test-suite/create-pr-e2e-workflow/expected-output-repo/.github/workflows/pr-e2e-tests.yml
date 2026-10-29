@@ -1,0 +1,72 @@
+name: Pull Request - Integration + End to End Tests
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: "0.5.24"
+  PYTHON_VERSION: "3.12"
+  E2E_NAMESPACE: test
+
+jobs:
+  e2e-tests:
+    name: Run e2e tests (uv sync with evals)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.base.ref || github.ref }}
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Setup and deploy
+        uses: ./.github/actions/setup-and-deploy
+        timeout-minutes: 15
+        with:
+          repo_url: https://github.com/${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+          namespace: ${{ env.E2E_NAMESPACE }}
+          use_kind: true
+          build_images: true
+          kind_pre_deploy_command: "make helm-depend"
+          deploy_command: "make helm-install-test"
+          build_images_command: "make build-all-images"
+          push_images_command: "make push-all-images"
+        env:
+          MODEL_ID: ${{ vars.MODEL_ID }}
+          MODEL_URL: ${{ vars.MODEL_URL }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+
+      - name: Run tests
+        uses: ./.github/actions/run-quickstart-tests
+        timeout-minutes: 30
+        with:
+          pre_test_command: "make sync-evaluations"
+          test_command: "make test-short-e2e && make test-short-eval"
+          upload_results: "evaluations/results"
+          upload_retention_days: 30
+        env:
+          MODEL_ID: ${{ vars.MODEL_ID }}
+          MODEL_URL: ${{ vars.MODEL_URL }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+
+      - name: Cleanup
+        if: always()
+        uses: ./.github/actions/cleanup
+        with:
+          cleanup_command: "make helm-uninstall"

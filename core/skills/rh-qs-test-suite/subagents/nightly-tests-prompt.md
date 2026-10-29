@@ -90,6 +90,14 @@ Shallow-clone `https://github.com/rh-ai-quickstart/quickstart-ci-testing` to a t
 - If a given action directory (e.g. `.github/actions/setup-and-deploy/`) does not exist here → copy it in full.
 - If it already exists here → diff it against the freshly cloned source. If identical, skip and note "already up to date." If different, show the user the diff and ask whether to overwrite, keep the existing version, or view more context before deciding. Record the outcome per action.
 
+After copying the action tree, inspect every copied action for references to
+files outside `.github/actions/`, including paths resolved through
+`${GITHUB_ACTION_PATH}`. Copy those companion files from the same repository to
+the identical repository-relative path, applying the same create/diff-and-ask
+rule. In particular, `setup-kind/action.yaml` invokes
+`scripts/ci/kind-with-registry.sh`, so include that file whenever the shared
+action tree is copied. Verify each referenced file exists in the quickstart.
+
 Clean up the temp clone when done.
 
 ### Step 7: Generate the namespace/ServiceAccount provisioning script
@@ -158,6 +166,9 @@ files:
   actions_copied: [...]
   actions_skipped_identical: [...]
   actions_updated: [...]
+  companion_files_copied: [...]
+  companion_files_skipped_identical: [...]
+  companion_files_updated: [...]
   workflows_created: [...]
   workflows_skipped_or_updated: [...]
   provisioning_script: scripts/ci/setup-nightly-namespace.sh

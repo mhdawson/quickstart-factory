@@ -4,7 +4,11 @@ import argparse
 import fnmatch
 import hashlib
 import json
+import os
+import re
 from pathlib import Path
+
+import yaml
 
 
 METADATA_FILES = {".gitkeep"}
@@ -18,15 +22,54 @@ def digest(path: Path) -> str:
     return hasher.hexdigest()
 
 
-def entries(root: Path) -> dict[str, dict[str, str | None]]:
-    """Return every non-root tree entry, including empty directories."""
+def is_within(path: Path, roots: list[Path]) -> bool:
+    for root in roots:
+        try:
+            path.relative_to(root)
+            return True
+        except ValueError:
+            continue
+    return False
+
+
+def entries(root: Path, allowed_external_roots: list[Path] | None = None) -> dict[str, dict[str, str | None]]:
+    """Return every tree entry, expanding links only to declared baseline dependencies."""
+    root = root.resolve()
+    allowed_roots = [path.resolve() for path in (allowed_external_roots or [])]
     result: dict[str, dict[str, str | None]] = {}
-    for path in root.rglob("*"):
-        relative = str(path.relative_to(root))
-        if path.is_dir():
-            result[relative] = {"kind": "directory", "sha256": None}
-        elif path.is_file():
-            result[relative] = {"kind": "file", "sha256": digest(path)}
+
+    def visit(directory: Path, relative_directory: Path, ancestors: frozenset[Path]) -> None:
+        resolved_directory = directory.resolve(strict=True)
+        if resolved_directory in ancestors:
+            raise ValueError(f"directory symlink cycle detected at {directory}")
+        next_ancestors = ancestors | {resolved_directory}
+        with os.scandir(directory) as children:
+            for child in sorted(children, key=lambda item: item.name):
+                path = Path(child.path)
+                relative = relative_directory / child.name
+                key = relative.as_posix()
+                if child.is_symlink():
+                    target = path.resolve(strict=True)
+                    if target.is_dir():
+                        if is_within(target, [root, *allowed_roots]):
+                            result[key] = {"kind": "directory", "sha256": None}
+                            visit(path, relative, next_ancestors)
+                        else:
+                            result[key] = {"kind": "symlink", "sha256": None}
+                    elif target.is_file():
+                        if is_within(target, [root, *allowed_roots]):
+                            result[key] = {"kind": "file", "sha256": digest(path)}
+                        else:
+                            result[key] = {"kind": "symlink", "sha256": None}
+                    else:
+                        result[key] = {"kind": "symlink", "sha256": None}
+                elif child.is_dir(follow_symlinks=False):
+                    result[key] = {"kind": "directory", "sha256": None}
+                    visit(path, relative, next_ancestors)
+                elif child.is_file(follow_symlinks=False):
+                    result[key] = {"kind": "file", "sha256": digest(path)}
+
+    visit(root, Path(), frozenset())
     return result
 
 
@@ -46,8 +89,27 @@ def main() -> int:
         parser.error("expected-output-repo and .rhoai-qs/qs-test-quickstart must exist")
     ignore_file = case / "comparison-ignore"
     ignored = {line.strip() for line in ignore_file.read_text().splitlines() if line.strip() and not line.lstrip().startswith("#")} if ignore_file.is_file() else set()
-    expected_entries = {path: value for path, value in entries(expected).items() if path not in METADATA_FILES}
-    actual_entries = entries(actual)
+    config = yaml.safe_load((case / "test-config.yaml").read_text()) or {}
+    baseline_dependencies = config.get("baseline-dependencies", [])
+    if not isinstance(baseline_dependencies, list):
+        parser.error("test-config.yaml baseline-dependencies must be a list")
+    allowed_external_roots = []
+    for dependency in baseline_dependencies:
+        if (
+            not isinstance(dependency, dict)
+            or not isinstance(dependency.get("name"), str)
+            or not re.fullmatch(r"[A-Za-z0-9_-]+", dependency["name"])
+        ):
+            parser.error("test-config.yaml contains an invalid baseline dependency")
+        dependency_root = root / "test" / "skills" / case.parent.name / ".shared-dependencies" / dependency["name"]
+        if dependency_root.is_symlink():
+            parser.error(f"baseline dependency cache must not be a symlink: {dependency_root}")
+        allowed_external_roots.append(dependency_root)
+    try:
+        expected_entries = {path: value for path, value in entries(expected, allowed_external_roots).items() if path not in METADATA_FILES}
+        actual_entries = entries(actual)
+    except (OSError, RuntimeError, ValueError) as error:
+        parser.error(f"could not enumerate baseline or output tree: {error}")
     required_status = []
     for path in sorted(expected_entries):
         if matches_ignore(path, ignored):

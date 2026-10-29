@@ -3,6 +3,10 @@ execution:
   network: required
   external-dependencies:
     - https://github.com/rh-ai-quickstart/quickstart-ci-testing
+baseline-dependencies:
+  - name: quickstart-ci-testing
+    repository: https://github.com/rh-ai-quickstart/quickstart-ci-testing
+    ref: main
 validation-options:
   mode: targeted
   additional-instructions: only validate that the skill flags that cluster admin privilege is needed, nothing else

@@ -1,0 +1,87 @@
+name: Pull Request - Integration + End to End Tests
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: "0.5.24"
+  PYTHON_VERSION: "3.12"
+  E2E_NAMESPACE: test
+
+jobs:
+  e2e-tests:
+    if: github.event_name != 'pull_request_target' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate required secrets and variables
+        env:
+          PROD_TOKEN: ${{ secrets.PROD_TOKEN }}
+          PROD_SERVER: ${{ secrets.PROD_SERVER }}
+          MODEL_ID: ${{ vars.MODEL_ID }}
+          MODEL_URL: ${{ vars.MODEL_URL }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+        run: |
+          test -n "$PROD_TOKEN"
+          test -n "$PROD_SERVER"
+          test -n "$MODEL_API_KEY"
+          test -n "$MODEL_ID"
+          test -n "$MODEL_URL"
+
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.base.ref || github.ref }}
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Check uv version
+        run: make check-uv-version
+
+      - name: Setup and deploy
+        uses: ./.github/actions/setup-and-deploy
+        timeout-minutes: 15
+        with:
+          repo_url: https://github.com/${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+          namespace: ${{ env.E2E_NAMESPACE }}
+          use_kind: false
+          build_images: true
+          deploy_command: "make helm-install-test"
+          build_images_command: "make build-all-images"
+          push_images_command: "make push-all-images"
+        env:
+          PROD_TOKEN: ${{ secrets.PROD_TOKEN }}
+          PROD_SERVER: ${{ secrets.PROD_SERVER }}
+          MODEL_ID: ${{ vars.MODEL_ID }}
+          MODEL_URL: ${{ vars.MODEL_URL }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+
+      - name: Run tests
+        uses: ./.github/actions/run-quickstart-tests
+        timeout-minutes: 30
+        with:
+          test_command: "make test-short-e2e"
+        env:
+          MODEL_ID: ${{ vars.MODEL_ID }}
+          MODEL_URL: ${{ vars.MODEL_URL }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+
+      - name: Cleanup
+        if: always()
+        uses: ./.github/actions/cleanup
+        with:
+          cleanup_command: "make helm-uninstall"

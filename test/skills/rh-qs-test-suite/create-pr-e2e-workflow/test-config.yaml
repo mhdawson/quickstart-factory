@@ -1,0 +1,28 @@
+run-skill-command: Add the pr-e2e-tests.yml workflow to qs-test-quickstart.
+execution:
+  network: required
+  external-dependencies:
+    - https://github.com/rh-ai-quickstart/quickstart-ci-testing
+baseline-dependencies:
+  - name: quickstart-ci-testing
+    repository: https://github.com/rh-ai-quickstart/quickstart-ci-testing
+    ref: main
+validation-options:
+  mode: full-baseline
+  additional-instructions: |
+    Validate only the generated PR E2E workflow and the shared actions it uses.
+    Confirm .github/workflows/pr-e2e-tests.yml exists and triggers on
+    pull_request_target, workflow_dispatch, and schedule. Confirm it checks out
+    the base branch for trusted local actions, then passes the PR head repository
+    and the PR head branch name (github.event.pull_request.head.ref, not a commit
+    SHA) to .github/actions/setup-and-deploy with use_kind and build_images
+    enabled. Confirm it invokes .github/actions/run-quickstart-tests and
+    .github/actions/cleanup, runs the fixture's exact make targets
+    helm-depend, helm-install-test, sync-evaluations, test-short-e2e,
+    test-short-eval, and helm-uninstall, and uploads evaluations/results through
+    run-quickstart-tests. Confirm the shared actions from
+    quickstart-ci-testing are copied under .github/actions. Do not require
+    unrelated files or baseline-tree differences outside this scope. Confirm
+    the workflow propagates MODEL_ID and MODEL_URL from repository variables
+    and MODEL_API_KEY from repository secrets to both setup-and-deploy and
+    run-quickstart-tests.

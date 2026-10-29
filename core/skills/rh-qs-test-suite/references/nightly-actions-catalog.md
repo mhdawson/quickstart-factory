@@ -1,12 +1,19 @@
-# Nightly testing: quickstart-ci-testing actions catalog
+# Shared CI testing actions catalog
 
-Used by `subagents/nightly-tests-prompt.md`. Source repo: `rh-ai-quickstart/quickstart-ci-testing`. Reference workflows: `rh-ai-quickstart/ai-supply-chain-agent` — `test-ai-supply-chain-agent.yml`, `nightly-main.yml`, `nightly-development.yml`.
+Used by `subagents/nightly-tests-prompt.md` and the PR E2E workflow skeleton in `workflow-skeletons.md`. Source repo: `rh-ai-quickstart/quickstart-ci-testing`. Reference workflows: `rh-ai-quickstart/ai-supply-chain-agent` — `test-ai-supply-chain-agent.yml`, `nightly-main.yml`, `nightly-development.yml`.
 
 ## Why copy instead of reference remotely
 
 `quickstart-ci-testing`'s own README states composite actions cannot be referenced cross-repo (`uses: org/repo/.github/actions/x@ref` doesn't work for composite actions the way it does for whole reusable workflows), so the actions must be copied into `.github/actions/` in the consuming repo. There is no versioning/tagging scheme upstream — copying is a straight directory sync, re-checked (diff + prompt) on every run of the nightly subagent in case the source has changed.
 
-This action set is separate from the `prepare-runner`/`kind`/`inspect` actions `rh-qs-test-suite` may already have added for PR-time Kind E2E (see `composite-actions.md`) — both sets can coexist under `.github/actions/` without conflict; they serve different jobs (ephemeral PR-time Kind vs. real-cluster nightly).
+This action set is shared by PR E2E and nightly testing. Copy it from `quickstart-ci-testing` and do not generate the legacy local `prepare-runner`/`kind`/`inspect` action templates.
+
+Copy the complete `.github/actions/` tree and inspect its local references.
+The current `.github/actions/setup-kind/action.yaml` invokes
+`scripts/ci/kind-with-registry.sh` at the repository root; copy that companion
+file from `quickstart-ci-testing/scripts/ci/kind-with-registry.sh` whenever
+`setup-kind` is included. Keep the same destination path so the action resolves
+it through `${GITHUB_ACTION_PATH}/../../../scripts/ci/kind-with-registry.sh`.
 
 ## Actions inventory
 
@@ -15,12 +22,19 @@ This action set is separate from the `prepare-runner`/`kind`/`inspect` actions `
 | `setup-and-deploy` | Prepares the runner, clones the quickstart at a given ref, deploys it to OpenShift (or Kind, if `use_kind: true`) | `repo_url`, `ref`, `namespace` (default `quickstart-ci-project-1` — override per quickstart), `deploy_command` (required), `setup_commands`, `use_kind`, `build_images`, `build_images_command`, `push_images_command` |
 | `clone-quickstart` | Clones the target repo at a ref (called internally by `setup-and-deploy`) | `repo_url`, `ref`, `submodules` |
 | `setup-openshift` | `oc` login/context setup for the OpenShift path (called internally by `setup-and-deploy`) | — |
+| `setup-openshift-registry` | Provisions an ephemeral OpenShift project registry and port-forwards it to the runner when OpenShift image builds are enabled | `namespace` |
 | `prepare-runner` | Frees runner disk space before a deploy/build | `swap-storage` |
 | `run-quickstart-tests` | Runs the test command in the cloned quickstart directory, uploads results | `test_command` (required), `test_working_dir` (default `./quickstart`), `pre_test_command`, `upload_results`, `upload_retention_days` (default 2) |
 | `run-tests` | Lower-level test execution step called internally by `run-quickstart-tests` | — |
 | `cleanup` | Tears down the deployment | `cleanup_command` (required), `working_dir` (default `./quickstart`) |
 
-`setup-and-deploy` validates preconditions before running: `build_images` requires `use_kind: true`; when not using Kind, it errors early if `PROD_TOKEN`/`PROD_SERVER` secrets are missing.
+`setup-and-deploy` supports `build_images: true` for both Kind and OpenShift.
+For Kind, images target the local registry. For OpenShift, the action provisions
+an ephemeral project registry, builds and pushes through `localhost:5001`, and
+deploys with the in-cluster registry address. For PR E2E image builds, explicitly
+map `build_images_command` and `push_images_command` to existing Makefile
+targets. When not using Kind, the action requires the `PROD_TOKEN`/`PROD_SERVER`
+secrets.
 
 ## Reusable test workflow skeleton
 
