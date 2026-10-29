@@ -6,7 +6,7 @@ Configure at **organization** or **repository** level before enabling workflows 
 
 | Secret | Used in | Purpose |
 |--------|---------|---------|
-| `LLM_API_TOKEN_EVAL` | `pr-e2e-tests`, `pr-evaluation-check` | Evaluation / judge model API |
+| `LLM_API_TOKEN_EVAL` | `pr-e2e-tests` | Evaluation / judge model API |
 | `LLM_API_TOKEN_INFERENCE` | Kind deploy, pip-install PR | Model serving the app uses under test |
 | `LLM_API_TOKEN_EVAL_70B` | Nightly long / prod evals | Larger model for long conversation tests |
 | `QUAY_USERNAME` | `build-and-push` | Registry login |

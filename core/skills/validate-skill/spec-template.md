@@ -22,6 +22,7 @@ cases:
     execution:
       network: none | required
       external_dependencies: <list from test-config.yaml>
+      baseline_dependencies: <list from test-config.yaml>
     completion:
       runner_gate: core/skills/validate-skill/scripts/run_case.py
       status: completed

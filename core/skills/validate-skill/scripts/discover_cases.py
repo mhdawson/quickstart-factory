@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate and enumerate fixture cases for a Factory skill."""
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -63,6 +64,32 @@ def load_test_config(path: Path) -> tuple[dict[str, object] | None, list[str]]:
         external_dependencies = []
     if external_dependencies and network != "required":
         errors.append("execution.external-dependencies requires execution.network: required")
+    baseline_dependencies = config.get("baseline-dependencies", [])
+    if not isinstance(baseline_dependencies, list):
+        errors.append("baseline-dependencies must be a list when provided")
+        baseline_dependencies = []
+    seen_baseline_names = set()
+    for dependency in baseline_dependencies:
+        if not isinstance(dependency, dict):
+            errors.append("each baseline-dependencies item must be a mapping")
+            continue
+        name = dependency.get("name")
+        repository = dependency.get("repository")
+        ref = dependency.get("ref", "main")
+        if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", name):
+            errors.append("baseline dependency name must contain only letters, numbers, hyphens, or underscores")
+            continue
+        if name in seen_baseline_names:
+            errors.append(f"baseline dependency name is duplicated: {name}")
+        seen_baseline_names.add(name)
+        if not isinstance(repository, str) or not repository.strip():
+            errors.append(f"baseline dependency {name} must have a non-empty repository")
+        elif repository.strip() not in external_dependencies:
+            errors.append(f"baseline dependency {name} must also appear in execution.external-dependencies")
+        if not isinstance(ref, str) or not ref.strip():
+            errors.append(f"baseline dependency {name} must have a non-empty ref")
+        if network != "required":
+            errors.append("baseline-dependencies require execution.network: required")
     if errors:
         return None, errors
     return {
@@ -72,6 +99,14 @@ def load_test_config(path: Path) -> tuple[dict[str, object] | None, list[str]]:
         "validation_mode": validation_mode,
         "execution_network": network,
         "external_dependencies": [dependency.strip() for dependency in external_dependencies],
+        "baseline_dependencies": [
+            {
+                "name": dependency["name"].strip(),
+                "repository": dependency["repository"].strip(),
+                "ref": dependency.get("ref", "main").strip(),
+            }
+            for dependency in baseline_dependencies
+        ],
     }, []
 
 

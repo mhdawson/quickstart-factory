@@ -1,0 +1,30 @@
+run-skill-command: Add the pr-e2e-tests.yml workflow to qs-test-quickstart.
+execution:
+  network: required
+  external-dependencies:
+    - https://github.com/rh-ai-quickstart/quickstart-ci-testing
+baseline-dependencies:
+  - name: quickstart-ci-testing
+    repository: https://github.com/rh-ai-quickstart/quickstart-ci-testing
+    ref: main
+validation-options:
+  mode: full-baseline
+  additional-instructions: |
+    Validate only the generated PR E2E workflow and the shared actions it uses.
+    Confirm .github/workflows/pr-e2e-tests.yml exists and uses the shared
+    quickstart-ci-testing actions setup-and-deploy, run-quickstart-tests, and
+    cleanup. Confirm the fixture’s Helm chart contains an OpenShift Route and
+    therefore the generated workflow uses OpenShift rather than Kind: it must set
+    use_kind to false, build the PR head images by enabling build_images, and
+    pass PROD_TOKEN and PROD_SERVER to setup-and-deploy. Confirm it runs make
+    test-short-e2e and uses the PR head branch name rather than a commit SHA.
+    Confirm the cached setup-and-deploy action supports this combination: with
+    use_kind false and build_images true, it must invoke setup-openshift-registry,
+    build and push images through localhost:5001, and deploy with the action’s
+    in-cluster registry output. Confirm cleanup stops the registry port-forward
+    and removes the ci-image-registry-tls secret.
+    Confirm the workflow propagates the fixture's required LLM configuration to
+    both setup-and-deploy and run-quickstart-tests: MODEL_ID and MODEL_URL from
+    repository variables and MODEL_API_KEY from repository secrets.
+    Do not require unrelated files or baseline-tree differences outside this
+    scope.

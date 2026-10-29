@@ -8,6 +8,7 @@ report assembly so those handoffs cannot be completed manually or out of order.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import re
@@ -50,6 +51,23 @@ def reset_report_dir(path: Path) -> None:
     elif path.is_dir():
         shutil.rmtree(path)
     path.mkdir(parents=True, exist_ok=True)
+
+
+def acquire_run_lock(root: Path):
+    """Prevent concurrent runs from resetting the shared disposable quickstart."""
+    lock_path = root / "test" / "skills" / "reports" / ".validate-skill.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_file = lock_path.open("a+")
+    try:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        lock_file.close()
+        return None
+    lock_file.seek(0)
+    lock_file.truncate()
+    lock_file.write(f"pid: {os.getpid()}\n")
+    lock_file.flush()
+    return lock_file
 
 
 def run(command: list[str], root: Path, timeout: int) -> tuple[int, str, str, bool]:
@@ -165,6 +183,7 @@ def write_spec(root: Path, skill: str, case: dict[str, Any], run_at: str, report
                 "execution": {
                     "network": case["execution_network"],
                     "external_dependencies": case["external_dependencies"],
+                    "baseline_dependencies": case.get("baseline_dependencies", []),
                 },
                 "completion": {
                     "runner_gate": "core/skills/validate-skill/scripts/run_case.py",
@@ -333,6 +352,21 @@ def main() -> int:
     if rater_command is not None and (not isinstance(rater_command, list) or not all(isinstance(item, str) for item in rater_command)):
         parser.error("rater-command-json must be a JSON array of strings")
 
+    try:
+        # Keep the descriptor open for the full run; the OS releases the lock
+        # automatically if the coordinator exits or is interrupted.
+        run_lock = acquire_run_lock(root)
+    except OSError as error:
+        print(f"Could not acquire the validate-skill run lock: {error}", file=sys.stderr)
+        return 1
+    if run_lock is None:
+        print(
+            "Another validate-skill run is active in this workspace. "
+            "Wait for it to finish before starting another run.",
+            file=sys.stderr,
+        )
+        return 2
+
     discover = [sys.executable, str(root / "core/skills/validate-skill/scripts/discover_cases.py"), args.skill_name]
     if args.tests is not None:
         discover.extend(["--tests", args.tests])
@@ -369,18 +403,71 @@ def main() -> int:
         print(json.dumps(context, indent=2))
         return 1
 
+    baseline_sync_command = [
+        sys.executable,
+        str(root / "core/skills/validate-skill/scripts/sync_baseline_dependencies.py"),
+        args.skill_name,
+        *[case["name"] for case in discovered["cases"]],
+    ]
+    sync_code, sync_stdout, sync_stderr, sync_timed_out = run(baseline_sync_command, root, 300)
+    try:
+        baseline_sync = json.loads(sync_stdout)
+    except json.JSONDecodeError:
+        baseline_sync = {"status": "unavailable", "dependencies": [], "error": sync_stderr or sync_stdout}
+    baseline_sync["process_exit"] = sync_code
+    baseline_sync["timed_out"] = sync_timed_out
+    aggregate_dir = root / "test" / "skills" / "reports" / args.skill_name
+    write_json(aggregate_dir / "baseline-dependencies.json", baseline_sync)
+    baseline_evidence = [
+        f"Baseline dependency {dependency['name']} synchronized at {dependency['commit']}."
+        for dependency in baseline_sync.get("dependencies", [])
+        if dependency.get("commit")
+    ]
+    synced_baseline_names = {
+        dependency.get("name")
+        for dependency in baseline_sync.get("dependencies", [])
+        if isinstance(dependency, dict) and isinstance(dependency.get("name"), str)
+    }
+
     aggregate_cases: list[dict[str, Any]] = []
     for case in discovered["cases"]:
         case_path = (root / case["path"]).resolve()
         report_dir = root / "test" / "skills" / "reports" / args.skill_name / case["name"]
         reset_report_dir(report_dir)
         write_spec(root, args.skill_name, case, run_at, report_dir)
+        write_json(report_dir / "baseline-dependencies.json", baseline_sync)
+
+        missing_baseline_names = sorted(
+            {dependency["name"] for dependency in case.get("baseline_dependencies", [])}
+            - synced_baseline_names
+        )
+        if missing_baseline_names:
+            result = {
+                "name": case["name"],
+                "status": "blocked",
+                "score": None,
+                "summary": "A required expected-output baseline dependency could not be synchronized.",
+                "evidence": [
+                    "Fixture preparation and target-skill execution were not started.",
+                    f"Baseline sync status: {baseline_sync.get('status', 'unknown')}",
+                    *baseline_evidence,
+                ],
+                "differences": [],
+                "blocked_or_failure": (
+                    f"Could not synchronize baseline dependency(s): {', '.join(missing_baseline_names)}. "
+                    f"{baseline_sync.get('error', 'baseline dependency sync failed')}"
+                ),
+            }
+            write_json(report_dir / "validation-results.json", {"target_skill": args.skill_name, "run_at": run_at, "cases": [result]})
+            render_case_report(root, report_dir)
+            aggregate_cases.append(result)
+            continue
 
         prepare = [sys.executable, str(root / "core/skills/validate-skill/scripts/prepare_fixture.py"), case["path"]]
         code, prepare_out, prepare_err, timed_out = run(prepare, root, 60)
         save_process_log(report_dir / "prepare.log", prepare, prepare_out, prepare_err, timed_out)
         if code != 0:
-            aggregate_cases.append({"name": case["name"], "status": "failed", "score": None, "summary": "Fixture preparation failed.", "evidence": [], "differences": [], "blocked_or_failure": prepare_err or prepare_out})
+            aggregate_cases.append({"name": case["name"], "status": "failed", "score": None, "summary": "Fixture preparation failed.", "evidence": baseline_evidence, "differences": [], "blocked_or_failure": prepare_err or prepare_out})
             continue
 
         preflight = [sys.executable, str(root / "core/skills/validate-skill/scripts/preflight_dependencies.py"), case["path"]]
@@ -468,7 +555,7 @@ def main() -> int:
                 "status": "failed" if not runner_result.get("blocked_question") else "blocked",
                 "score": None,
                 "summary": "Target-skill execution did not complete.",
-                "evidence": [f"Network profile: {args.network_profile}", f"Preflight status: {preflight_json.get('status', 'unknown')}"],
+                "evidence": [*baseline_evidence, f"Network profile: {args.network_profile}", f"Preflight status: {preflight_json.get('status', 'unknown')}"],
                 "differences": [],
                 "blocked_or_failure": runner_result.get("blocked_question") or runner_result.get("failure") or completion.get("failure", "unknown runner failure"),
                 "conversation": conversation_from_runner(runner_result),
@@ -557,7 +644,7 @@ def main() -> int:
                 "status": "failed",
                 "score": None,
                 "summary": "Independent output rating failed schema validation.",
-                "evidence": ["Target-skill execution completed.", f"Preflight status: {preflight_json.get('status', 'unknown')}"],
+                "evidence": [*baseline_evidence, "Target-skill execution completed.", f"Preflight status: {preflight_json.get('status', 'unknown')}"],
                 "differences": [],
                 "blocked_or_failure": str(error),
                 "conversation": conversation,
@@ -572,6 +659,7 @@ def main() -> int:
                 "score": rater_result["score"],
                 "summary": rater_result["summary"],
                 "evidence": [
+                    *baseline_evidence,
                     f"Target command: {case.get('run_skill_command') or 'none'}",
                     f"Network profile: {args.network_profile}",
                     f"Preflight status: {preflight_json.get('status', 'unknown')}",
@@ -606,7 +694,6 @@ def main() -> int:
         aggregate_cases.append(result)
 
     aggregate = {"target_skill": args.skill_name, "run_at": run_at, "cases": aggregate_cases}
-    aggregate_dir = root / "test" / "skills" / "reports" / args.skill_name
     write_json(aggregate_dir / "validation-results.json", aggregate)
     summary_lines = [
         f"# Validation aggregate: {args.skill_name}",
