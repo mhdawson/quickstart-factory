@@ -117,10 +117,16 @@ jobs:
           import sys
 
           def parse(version):
+              if version.startswith("v"):
+                  version = version[1:]
               parts = version.split(".")
-              if len(parts) != 3 or not all(part.isdigit() for part in parts):
+              if len(parts) != 3 or not all(
+                  part.isdigit() and (part == "0" or not part.startswith("0"))
+                  for part in parts
+              ):
                   raise SystemExit(
-                      f"Version must be numeric semver (MAJOR.MINOR.PATCH): {version}"
+                      "Version must be semver (MAJOR.MINOR.PATCH), optionally "
+                      f"prefixed with v: {version}"
                   )
               return tuple(int(part) for part in parts)
 
