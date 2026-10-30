@@ -2,7 +2,7 @@ run-skill-command: Add the dev version-bump PR workflow to qs-test-quickstart us
 validation-options:
   mode: full-baseline
   additional-instructions: |
-    Confirm the generated .github/workflows/create-dev-to-main-bump-r.yml
+    Confirm the generated .github/workflows/create-dev-to-main-bump-pr.yml
     follows the skill's canonical workflow template and preserves its behavior;
     it need not be byte-for-byte identical. Allow justified repository-specific
     adaptations for the quickstart's version files, manifest, or configured

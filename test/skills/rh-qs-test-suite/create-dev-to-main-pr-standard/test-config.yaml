@@ -3,7 +3,7 @@ validation-options:
   mode: full-baseline
   additional-instructions: |
     Confirm that the skill creates .github/workflows/create-dev-to-main-pr.yml,
-    .github/workflows/create-dev-to-main-bump-r.yml, and scripts/bump_release.py
+    .github/workflows/create-dev-to-main-bump-pr.yml, and scripts/bump_release.py
     with scripts/bump-release.manifest.json. Confirm both workflows use
     workflow_dispatch and the configured GitHub App credentials. The bump
     workflow must update the release manifest and create or update a PR into

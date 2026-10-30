@@ -215,9 +215,9 @@ Use the skill-local [build-and-push workflow reference](./build-and-push-workflo
 
 Use the skill-local [promotion workflow reference](./create-dev-to-main-pr-workflow.yml), [release helper](./bump_release.py), and [release manifest](./bump-release.manifest.json). Copy the helper and manifest into `scripts/`, then adapt the manifest to every file that must carry the release version. The workflow verifies the target dev commit and `origin/main`, requires the dev version to be greater, creates `dev-<short-sha>`, and opens the promotion PR.
 
-## create-dev-to-main-bump-r.yml
+## create-dev-to-main-bump-pr.yml
 
-Use the skill-local [dev version-bump workflow reference](./create-dev-to-main-bump-r-workflow.yml) with the same `scripts/bump_release.py` helper and `scripts/bump-release.manifest.json`. It is manually dispatched, reads the current release version on `dev`, defaults to the next patch version (or accepts a requested higher version), updates the manifest paths, verifies alignment, and opens or updates a PR into `dev`. The separate `create-dev-to-main-pr.yml` workflow promotes the resulting dev changes to `main`.
+Use the skill-local [dev version-bump workflow reference](./create-dev-to-main-bump-pr-workflow.yml) with the same `scripts/bump_release.py` helper and `scripts/bump-release.manifest.json`. It is manually dispatched, reads the current release version on `dev`, defaults to the next patch version (or accepts a requested higher version), updates the manifest paths, verifies alignment, and opens or updates a PR into `dev`. The separate `create-dev-to-main-pr.yml` workflow promotes the resulting dev changes to `main`.
 
 ## Evaluations artifact tarball (reusable snippet)
 
