@@ -136,7 +136,7 @@ jobs:
           {
             echo "## Summary"
             echo
-            echo "This PR increments the dev version from `$CURRENT_VERSION` to `$NEW_VERSION`."
+            printf 'This PR increments the dev version from `%s` to `%s`.\n' "$CURRENT_VERSION" "$NEW_VERSION"
             echo
             echo "## Files updated"
             echo
