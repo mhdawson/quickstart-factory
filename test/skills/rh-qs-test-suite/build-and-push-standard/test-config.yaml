@@ -1,0 +1,21 @@
+run-skill-command: Create only the build-and-push images workflow for qs-test-quickstart.
+validation-options:
+  mode: full-baseline
+  additional-instructions: |
+    In addition to matching the full expected tree, confirm the build-and-push
+    workflow runs on every main and dev push with no version-change guard,
+    supports workflow_dispatch with branch selection and uses make version,
+    serializes each branch with queue: max and no cancellation, is self-contained
+    with no workflow_call, limits publishing to
+    the rh-ai-quickstart owner and excludes
+    forked repositories, uses the QUAY_USERNAME and QUAY_PASSWORD secrets,
+    and invokes the fixture's make
+    version, make build-all-images, and make push-all-images targets. Confirm
+    the workflow rejects an invalid make version and invalid derived OCI tags
+    before image build or push steps. Confirm it detects the optional
+    build-push-images-needed target and gates build/push/retag as follows:
+    when FORCE_BUILD_ALL is not TRUE, a zero exit runs those steps and a
+    nonzero exit skips them; when FORCE_BUILD_ALL is TRUE, those steps run
+    even if the target exits nonzero. Confirm the force_build_all manual input
+    defaults to FALSE. The fixture target can return either status based on
+    BUILD_PUSH_IMAGES_NEEDED.

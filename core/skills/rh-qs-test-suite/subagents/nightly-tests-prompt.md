@@ -81,7 +81,7 @@ If nothing is found, record "No cluster-admin requirement detected." If somethin
 
 ### Step 5: Detect the branch model
 
-Determine the default branch (normally `main`) and whether a second long-lived branch exists (`dev`, `development`, or `develop` — check for all three; use whichever exists). If no second branch exists, you will generate only `nightly-main.yml` in Step 9 and note in your report that the dev nightly was skipped.
+Determine the default branch and whether a second long-lived branch exists (`dev`, `development`, or `develop` — check for all three; use whichever exists) from Git metadata when it is available. If no Git metadata is available, assume `main` is the only branch; do not ask the user in this case. If no second branch exists, generate only `nightly-main.yml` in Step 9, use `dev: null` in the manifest, and note in your report that Git metadata was unavailable and the main-only branch model was assumed.
 
 ### Step 6: Copy composite actions from quickstart-ci-testing
 
@@ -171,6 +171,19 @@ Summarize what was created/updated/skipped, then always include:
 2. **Toolchain setup steps used**, and their source — flag any that fell back to a tool's default version because nothing in the repo pinned one, so the user can confirm it's correct.
 3. **Required secrets/variables**, names and explanations only, split into Secrets and Variables, plus any "found but unconfirmed" entries — never invent or ask for actual values.
 4. **Next steps**: run `scripts/ci/setup-nightly-namespace.sh` against the target cluster, set the printed `PROD_TOKEN`/`PROD_SERVER` plus every other listed secret/variable in GitHub, then trigger `test-<slug>.yml` via `workflow_dispatch` once to confirm it's green before relying on the schedule.
+
+## Verification
+
+Before reporting completion:
+
+1. Confirm every file you claim to have created or updated actually exists at
+   its declared path under the quickstart repository root.
+2. Confirm the reusable workflow, at least one nightly caller, the provisioning
+   script, and the nightly manifest are present.
+3. Confirm no unrelated file was created, updated, or deleted.
+4. Parse every generated YAML file and run `bash -n` on the provisioning script.
+5. If any required artifact is missing or any check fails, report failure rather
+   than claiming success.
 
 ## Output
 

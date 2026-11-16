@@ -173,48 +173,7 @@ jobs:
 
 ## build-and-push.yaml
 
-```yaml
-name: Build and push images
-
-on:
-  push:
-    branches: [main, dev]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.sha }}
-  cancel-in-progress: true
-
-env:
-  REGISTRY: quay.io/rh-ai-quickstart
-  UV_VERSION: "0.8.9"
-  PYTHON_VERSION: "3.12"
-
-jobs:
-  build-and-push:
-    if: github.repository_owner == 'rh-ai-quickstart'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - id: version
-        run: |
-          BASE_VERSION=$(make version)
-          # tag logic: main → latest, dev → dev tag, etc.
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_PASSWORD }}
-      - uses: astral-sh/setup-uv@v6
-        with:
-          version: ${{ env.UV_VERSION }}
-          python-version: ${{ env.PYTHON_VERSION }}
-      - run: |
-          for version in ${{ steps.version.outputs.versions }}; do
-            VERSION="${version}" make build-all-images
-            VERSION="${version}" make push-all-images
-          done
-```
+Use the skill-local [build-and-push workflow reference](./build-and-push-workflow.yaml). It combines push triggers for `main` and `dev` with manual dispatch, checks the repository owner and fork status, and calls the quickstart's Makefile build and push targets. Adapt the registry and toolchain steps to the quickstart.
 
 ## Evaluations artifact tarball (reusable snippet)
 

@@ -1,0 +1,18 @@
+run-skill-command: Create only the build-and-push images workflow for qs-test-quickstart.
+question-answer-context: >-
+  The Makefile targets are release-tag-source for the version, which prints a
+  valid release tag; assemble-container-set for building all images; and
+  replicate-container-set for publishing all images. The build and publish
+  targets accept VERSION and REGISTRY, and build/publish
+  quay.io/rh-ai-quickstart/qs-test-quickstart.
+validation-options:
+  mode: full-baseline
+  additional-instructions: |
+    Confirm the conversation shows that the skill asks the user to map the
+    legacy Makefile targets to version/build/publish, receives the mapping, and
+    creates the workflow using make release-tag-source, make
+    assemble-container-set, and make replicate-container-set with VERSION and
+    REGISTRY. Confirm the Makefile lacks build-push-images-needed and the
+    workflow proceeds with publishing by default when the optional target is
+    absent. Preserve all input files and create no files other than the
+    requested workflow.

@@ -1,0 +1,12 @@
+run-skill-command: Create only the build-and-push images workflow for qs-test-quickstart.
+validation-options:
+  mode: full-baseline
+  additional-instructions: |
+    Confirm the workflow uses the documented existing targets: make image-version,
+    make build-images, and make publish-images. Pass VERSION and REGISTRY as
+    documented. Do not call absent make version, build-all-images, or
+    push-all-images targets. Confirm it retains main/dev push triggers, manual
+    branch selection, OCI tag validation, owner/fork guard, Quay secrets, and
+    branch queue behavior, omits Python/uv setup, and preserves all input files.
+    Confirm the Makefile lacks build-push-images-needed and the workflow
+    proceeds with publishing by default when the optional target is absent.
