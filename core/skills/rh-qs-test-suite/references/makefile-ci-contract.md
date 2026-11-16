@@ -1,6 +1,21 @@
 # Makefile CI contract
 
-GitHub Actions should call **Make targets**, not duplicate `uv sync` / `helm` logic. Align `UV_VERSION` in the Makefile with workflow `env.UV_VERSION` (it-self-service-agent uses `0.8.9` as the canonical example).
+GitHub Actions should call **Make targets**, not duplicate dependency-install or
+Helm-render logic. For uv-based quickstarts, align Makefile `UV_VERSION` with
+workflow `env.UV_VERSION` (it-self-service-agent uses `0.8.9` as a canonical
+example). For other dependency managers, follow the repository's own setup and
+version pins.
+
+The tables below describe common targets; they are not permission to assume a
+quickstart uses uv or implements every target. Inspect its `Makefile`, dependency
+manifests, and existing workflows before generating CI. Call only targets that
+exist or that the requested change adds. Preserve existing names and defaults.
+For a pip/requirements quickstart, keep its existing requirements-check target
+(for example, `check-deps`), use Python setup, and omit uv setup and uv-specific
+checks unless the repository actually uses uv and defines those checks. Make
+`deps-all` depend on that requirements check. Helm render targets should retain
+the Makefile's namespace default, while CI passes its own namespace as an
+override.
 
 ## Version and dependency hygiene
 

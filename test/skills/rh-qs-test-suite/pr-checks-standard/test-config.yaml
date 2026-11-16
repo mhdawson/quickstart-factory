@@ -1,0 +1,7 @@
+run-skill-command: Bring pr-checks.yml up to the factory standard for qs-test-quickstart.
+validation-options:
+  mode: full-baseline
+  additional-instructions: |
+    Confirm that the generated PR workflow keeps the Makefile as the CI API,
+    validates uv and lockfiles before lint, includes Helm manifest validation,
+    and does not modify unrelated repository files.

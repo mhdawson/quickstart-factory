@@ -3,12 +3,15 @@
 Reference repo: `it-self-service-agent/.github/workflows/`
 
 Use this table to decide which files to copy or adapt for a new quickstart. Rename workflows to match the product; keep **one concern per file**.
+The Makefile column shows patterns from the reference repository. Select only
+the checks and targets supported by the quickstart's Makefile and dependency
+manager; do not add uv or lockfile steps just because they appear here.
 
 ## Pull request — fast feedback (`pull_request`)
 
 | File | Workflow name | Jobs | Makefile / notes |
 |------|---------------|------|------------------|
-| `pr-checks.yml` | Pull Request - Quality Checks & Unit Tests | `code-quality-check`, `helm-export-validate`, `pull-request-tests` | `check-uv-version`, `check-lockfiles`, `check-requirements`, `deps-all`, flake8/black/isort/mypy or `make lint`, `helm-export-validate-demo`, `test-all` |
+| `pr-checks.yml` | Pull Request - Quality Checks & Unit Tests | `code-quality-check`, `helm-export-validate`, `pull-request-tests` | Dependency/version checks supported by this quickstart, `deps-all`, flake8/black/isort/mypy or `make lint`, `helm-export-validate-demo`, `test-all` |
 | `pr-pip-install-build.yml` | Pull Request - Build Test (pip install method) | `build-test-pip-install` | Same Kind path with `use_pip_install: "true"` on kind action |
 | `pr-branch-check.yml` | Require dev branch for main PRs | `validate-pr-branch` | Inline bash: source must be `dev` or `dev-<hex>` from same repo |
 
