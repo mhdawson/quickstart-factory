@@ -1,0 +1,6 @@
+apiVersion: v2
+name: qs-test-quickstart
+description: Fixture chart for dev-to-main promotion
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

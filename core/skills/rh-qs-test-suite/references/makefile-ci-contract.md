@@ -76,6 +76,7 @@ Examples from it-self-service-agent—replace with design-specific targets:
 | Target | CI usage |
 |--------|----------|
 | `version` | Emit semver for image tags (`build-and-push`) |
+| `BASE_VERSION` variable | Authoritative release version consumed by `scripts/bump_release.py --verify` |
 | `helm-install-prod` | Nightly against real cluster |
 
 ## Nightly contract (canonical names)

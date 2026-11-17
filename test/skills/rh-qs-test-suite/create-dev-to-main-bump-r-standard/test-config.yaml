@@ -1,0 +1,16 @@
+run-skill-command: Add the dev version-bump PR workflow to qs-test-quickstart using the skill's canonical workflow template. The release version is stored in Makefile BASE_VERSION and helm/Chart.yaml appVersion.
+validation-options:
+  mode: full-baseline
+  additional-instructions: |
+    Confirm the generated .github/workflows/create-dev-to-main-bump-r.yml
+    follows the skill's canonical workflow template and preserves its behavior;
+    it need not be byte-for-byte identical. Allow justified repository-specific
+    adaptations for the quickstart's version files, manifest, or configured
+    secrets. Confirm it uses workflow_dispatch, checks out dev, verifies the
+    current release manifest, defaults to a patch bump or accepts a requested
+    higher semantic version, updates and re-verifies all manifest paths, then
+    creates or updates a PR into dev using the configured GitHub App credentials.
+    Confirm the generated helper and manifest exist, the manifest includes
+    Makefile and helm/Chart.yaml for this fixture, and the requested workflow
+    filename is present. Keep every expected output path required; treat
+    justified nonfunctional differences as minor where appropriate.

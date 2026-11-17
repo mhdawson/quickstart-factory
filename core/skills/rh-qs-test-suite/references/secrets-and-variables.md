@@ -52,8 +52,8 @@ env:
 
 | Secret | Used in |
 |--------|---------|
-| `PR_CREATION_APP_*_ID` | `create-dev-to-main-pr` GitHub App |
-| `PR_CREATION_APP_*_PRIVATE_KEY` | App token generation |
+| `PR_CREATION_APP_ID` | `create-dev-to-main-pr`, `create-dev-to-main-bump-r` GitHub App |
+| `PR_CREATION_APP_PRIVATE_KEY` | App token generation for both release workflows |
 
 ## Security rules
 
