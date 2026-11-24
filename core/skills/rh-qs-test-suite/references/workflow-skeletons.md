@@ -33,8 +33,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.pull_request.base.ref || github.ref }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
