@@ -30,8 +30,8 @@ PR E2E uses Kind and must not receive repository secrets or variables. Put tests
 | File | Trigger | Purpose |
 |------|---------|---------|
 | `build-and-push.yaml` | `push` to `main`, `dev`; `workflow_dispatch` | Self-contained workflow from [the local build-and-push reference](./build-and-push-workflow.yaml); uses `make version`, `make build-all-images`, and `make push-all-images`; manual dispatch can set `FORCE_BUILD_ALL=TRUE` to override the optional image-needed target; excludes forks |
-| `create-dev-to-main-pr.yml` | `workflow_dispatch` | GitHub App token; runs `scripts/bump_release.py --verify`, requires dev version to be later than main, and creates temp branch `dev-<short-sha>` |
-| `create-dev-to-main-bump-pr.yml` | `workflow_dispatch` | Bumps the dev release version (or accepts a requested higher version) and opens or updates a GitHub App-authenticated PR into `dev` |
+| `create-dev-to-main-pr.yml` | `workflow_dispatch` | Uses the built-in `GITHUB_TOKEN`; runs `scripts/bump_release.py --verify`, requires dev version to be later than main, and creates temp branch `dev-<short-sha>` |
+| `create-dev-to-main-bump-pr.yml` | `workflow_dispatch` | Uses the built-in `GITHUB_TOKEN`; bumps the dev release version (or accepts a requested higher version) and opens or updates a PR into `dev` |
 
 ## Scheduled / nightly
 

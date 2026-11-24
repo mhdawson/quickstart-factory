@@ -48,12 +48,14 @@ env:
   LLM_API_TOKEN: ${{ secrets.LLM_API_TOKEN_EVAL }}
 ```
 
-## Promotion / automation (optional)
+## Promotion / automation
 
-| Secret | Used in |
-|--------|---------|
-| `PR_CREATION_APP_ID` | `create-dev-to-main-pr`, `create-dev-to-main-bump-pr` GitHub App |
-| `PR_CREATION_APP_PRIVATE_KEY` | App token generation for both release workflows |
+The `create-dev-to-main-pr` and `create-dev-to-main-bump-pr` workflows use the
+built-in `GITHUB_TOKEN`. They declare `contents: write` and `pull-requests: write`
+permissions and require no additional repository secrets.
+
+Events created with `GITHUB_TOKEN` do not trigger new workflow runs, except for
+`workflow_dispatch` and `repository_dispatch` events.
 
 ## Security rules
 
