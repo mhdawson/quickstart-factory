@@ -6,8 +6,8 @@ Configure at **organization** or **repository** level before enabling workflows 
 
 | Secret | Used in | Purpose |
 |--------|---------|---------|
-| `LLM_API_TOKEN_EVAL` | `pr-e2e-tests` | Evaluation / judge model API |
-| `LLM_API_TOKEN_INFERENCE` | Kind deploy, pip-install PR | Model serving the app uses under test |
+| `LLM_API_TOKEN_EVAL` | Nightly evals | Evaluation / judge model API |
+| `LLM_API_TOKEN_INFERENCE` | Nightly deploy/tests | Model serving the app uses under test |
 | `LLM_API_TOKEN_EVAL_70B` | Nightly long / prod evals | Larger model for long conversation tests |
 | `QUAY_USERNAME` | `build-and-push` | Registry login |
 | `QUAY_PASSWORD` | `build-and-push` | Registry login |
@@ -58,8 +58,7 @@ env:
 ## Security rules
 
 - Do not echo secrets in logs; use `env:` on steps, not inline `${{ secrets.* }}` in `run:` strings when avoidable.
-- Prefer `pull_request` for lint/unit; use `pull_request_target` only when secrets are required—and document why.
-- Fork PRs from outside the org will not receive secrets; document that E2E may skip or use mock LLMs for external contributors.
+- PR E2E workflows use `pull_request` and must not reference repository secrets or variables. Put tests that need repository configuration in nightly workflows.
 - Mock tokens are acceptable only for **static** validation (e.g. `HF_TOKEN: mock_hf_token_for_ci` for helm template/kubeconform).
 
 ## Quickstart checklist

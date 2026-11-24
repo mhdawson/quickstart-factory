@@ -70,7 +70,7 @@ jobs:
       - run: make test-all
 ```
 
-## pr-e2e-tests.yml — PR E2E (`pull_request_target`)
+## pr-e2e-tests.yml — PR E2E (`pull_request`)
 
 Before generating this workflow, copy the shared actions from `quickstart-ci-testing` into `.github/actions/` using the same shallow-clone/diff/prompt process as nightly testing. Also copy repository-relative companion files referenced by those actions. The shared `setup-kind/action.yaml` invokes `scripts/ci/kind-with-registry.sh` from the consuming repository root, so a Kind workflow must include that script at the same path.
 
@@ -83,22 +83,13 @@ Before generating `pr-e2e-tests.yml`, determine what the quickstart deploys and 
 1. Inspect the architecture spec, deployment contract, Helm chart/subcharts, values, Make targets, scripts, and existing workflows.
 2. Identify OpenShift-only requirements such as `Route`, `ImageStream`, `BuildConfig`, `DeploymentConfig`, `SecurityContextConstraints`, OpenShift AI custom resources, OpenShift operators, or external services reachable only through the target OpenShift cluster.
 3. Determine whether the workload can run unchanged in Kind, including its container images, storage, service discovery, ingress, credentials, and external dependencies.
-4. If the quickstart is OpenShift-only, use OpenShift with `use_kind: false` and the required cluster secrets. If the Makefile provides `build-all-images` and `push-all-images`, set `build_images: true`; the shared action provisions an ephemeral project registry, builds and pushes through `localhost:5001`, and deploys with the in-cluster registry address.
-5. If the quickstart can run in both OpenShift and Kind, use Kind with `use_kind: true` and `build_images: true` for PR E2E because it is isolated and does not require cluster secrets.
+4. Use Kind with `use_kind: true` and `build_images: true` for PR E2E. OpenShift-only or secret-dependent tests belong in nightly workflows.
+5. Do not add `${{ secrets.* }}` or `${{ vars.* }}` references to PR E2E workflows.
 6. If compatibility is ambiguous, ask the user instead of guessing.
 
-Always include `permissions: {contents: read}`. Kind PR E2E can use a PR-specific workflow group with `cancel-in-progress: true`. For OpenShift PR E2E sharing a project, use one shared workflow-level group without the PR number, `queue: max`, and `cancel-in-progress: false` so runs from multiple PRs wait for the shared project and execute one at a time. Same-PR reruns also queue as separate runs.
+Always include `permissions: {contents: read}` and use a PR-specific concurrency group with `cancel-in-progress: true`.
 
-```yaml
-concurrency:
-  group: ${{ github.workflow }}-${{ github.repository }}-openshift
-  queue: max
-  cancel-in-progress: false
-```
-
-For `pull_request_target`, checkout the trusted base branch before invoking local actions; pass the PR head repository and branch to `setup-and-deploy`. If the workflow uses OpenShift credentials, restrict the job to same-repository pull requests and validate required secrets before deployment.
-
-Set `persist-credentials: false` on the trusted-base checkout. For image builds,
+Pass the PR head repository and branch to `setup-and-deploy`. For image builds,
 explicitly pass `build_images_command` and `push_images_command` mapped to
 existing Makefile targets rather than relying on action defaults. When
 `run-quickstart-tests` uploads results, set `upload_retention_days: 30`.
@@ -106,10 +97,11 @@ Before reporting completion, verify every local action path and every
 repository-relative helper referenced by the copied actions exists.
 
 ```yaml
+# This workflow works only when deploying the quickstart does not require secrets.
 name: Pull Request - Integration + End to End Tests
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
   schedule:
@@ -131,15 +123,9 @@ jobs:
   e2e-tests:
     runs-on: ubuntu-latest
     steps:
-      - name: Validate LLM_API_TOKEN_EVAL secret
-        env:
-          LLM_API_TOKEN: ${{ secrets.LLM_API_TOKEN_EVAL }}
-        run: test -n "$LLM_API_TOKEN"
-
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.base.ref || github.ref }}
-          persist-credentials: false
 
       # Adapt or remove these toolchain steps to match the quickstart.
       - uses: astral-sh/setup-uv@v6
@@ -161,8 +147,6 @@ jobs:
           # Map these to the build and push targets present in this Makefile.
           build_images_command: "make build-all-images"
           push_images_command: "make push-all-images"
-        env:
-          LLM_API_TOKEN: ${{ secrets.LLM_API_TOKEN_INFERENCE }}
 
       - name: Run tests
         uses: ./.github/actions/run-quickstart-tests
@@ -172,9 +156,6 @@ jobs:
           test_command: "make test-short-e2e && make test-short-eval"
           upload_results: "evaluations/results"
           upload_retention_days: 30
-        env:
-          LLM_URL: ${{ vars.LLM_URL_EVAL }}
-          LLM_API_TOKEN: ${{ secrets.LLM_API_TOKEN_EVAL }}
 
       - name: Cleanup
         if: always()
@@ -183,7 +164,7 @@ jobs:
           cleanup_command: "make helm-uninstall"
 ```
 
-Adapt only the quickstart-specific target names and environment mapping. Inspect the resolved Make targets to discover required application variables and secrets, then map them at step scope. A value required by both deployment and testing must appear in both the `setup-and-deploy` and `run-quickstart-tests` `env:` blocks. Keep the shared action names and copy behavior aligned with nightly testing. The shared `run-quickstart-tests` action handles the working directory and artifact upload through its `test_working_dir` and `upload_results` inputs; use those inputs for nonstandard paths and do not add a separate manual artifact step unless the action cannot represent the required behavior.
+Adapt only the quickstart-specific target names and Make targets. Do not add repository secrets or variables to PR E2E workflows. Keep the shared action names and copy behavior aligned with nightly testing. The shared `run-quickstart-tests` action handles the working directory and artifact upload through its `test_working_dir` and `upload_results` inputs; use those inputs for nonstandard paths and do not add a separate manual artifact step unless the action cannot represent the required behavior.
 
 ## pr-branch-check.yml — dev → main
 

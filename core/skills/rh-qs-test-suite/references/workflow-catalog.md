@@ -17,19 +17,13 @@ manager; do not add uv or lockfile steps just because they appear here.
 **Triggers:** `pull_request` types `[opened, synchronize, reopened]`  
 **Concurrency:** `${{ github.workflow }}-${{ github.event.pull_request.number }}`
 
-## Pull request — secrets / heavy (`pull_request_target`)
+## Pull request — E2E (`pull_request`)
 
-Use when workflows need org secrets (LLM endpoints, Quay, prod cluster). Always checkout the PR head SHA:
-
-```yaml
-uses: actions/checkout@v5
-with:
-  ref: ${{ github.event.pull_request.head.sha }}
-```
+PR E2E uses Kind and must not receive repository secrets or variables. Put tests that need repository configuration in nightly workflows.
 
 | File | Workflow name | Jobs | Notes |
 |------|---------------|------|-------|
-| `pr-e2e-tests.yml` | Pull Request - Integration + End to End Tests | `e2e-tests` | Uses shared `quickstart-ci-testing` actions (`setup-and-deploy`, `run-quickstart-tests`, `cleanup`). Kind uses per-PR concurrency; OpenShift runs sharing a project use a shared workflow group with `queue: max` and no cancellation; daily cron `0 2 * * *` |
+| `pr-e2e-tests.yml` | Pull Request - Integration + End to End Tests | `e2e-tests` | Uses shared `quickstart-ci-testing` actions (`setup-and-deploy`, `run-quickstart-tests`, `cleanup`) on Kind; no repository secrets or variables; per-PR concurrency; daily cron `0 2 * * *` |
 
 ## Push / release
 

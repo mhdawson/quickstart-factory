@@ -1,7 +1,8 @@
+# This workflow works only when deploying the quickstart does not require secrets.
 name: Pull Request - Integration + End to End Tests
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
   schedule:
@@ -47,10 +48,6 @@ jobs:
           deploy_command: "make helm-install-test"
           build_images_command: "make build-all-images"
           push_images_command: "make push-all-images"
-        env:
-          MODEL_ID: ${{ vars.MODEL_ID }}
-          MODEL_URL: ${{ vars.MODEL_URL }}
-          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
 
       - name: Run tests
         uses: ./.github/actions/run-quickstart-tests
@@ -60,10 +57,6 @@ jobs:
           test_command: "make test-short-e2e && make test-short-eval"
           upload_results: "evaluations/results"
           upload_retention_days: 30
-        env:
-          MODEL_ID: ${{ vars.MODEL_ID }}
-          MODEL_URL: ${{ vars.MODEL_URL }}
-          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
 
       - name: Cleanup
         if: always()

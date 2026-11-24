@@ -53,14 +53,12 @@ workflow merely to make the generated workflow work.
       the matching workflow skeleton and adapting only repo-specific setup and
       Make targets
       - For `pr-e2e-tests.yml`, pass the PR head branch name (`github.event.pull_request.head.ref`) to `setup-and-deploy`; the shared clone action accepts branches/tags, not commit SHAs.
-      - For `pull_request_target`, check out the trusted base branch with `persist-credentials: false` before invoking local actions.
       - Use `test-short-e2e` as the required PR E2E target. Include `test-short-eval` only when that target already exists.
-      - Before generating `pr-e2e-tests.yml`, inspect the resolved deploy and test Make targets for required application variables/secrets. Map them at step scope to both `setup-and-deploy` and `run-quickstart-tests` when both targets require them; do not move application secrets to job scope.
-      - For PR E2E, infer image-build requirements from the Makefile: when `build-all-images` and `push-all-images` targets exist, set `build_images: true` and explicitly map those targets. This is supported for both Kind and OpenShift.
+      - Do not add secrets or repository variables to `pr-e2e-tests.yml`. Run tests that require repository configuration in nightly workflows.
+      - For Kind PR E2E, infer image-build requirements from the Makefile: when `build-all-images` and `push-all-images` targets exist, set `build_images: true` and explicitly map those targets.
       - Set `upload_retention_days: 30` when uploading test results through `run-quickstart-tests`.
-      - For OpenShift PR E2E with `build_images: true`, the shared `setup-and-deploy` action provisions an ephemeral project registry, builds and pushes through `localhost:5001`, and deploys with the in-cluster registry address.
-      - Before generating `pr-e2e-tests.yml`, inspect what the quickstart deploys and uses to decide whether it is OpenShift-only or also Kind-compatible. Use OpenShift only when Kind cannot support the required workload; otherwise use Kind for PR E2E.
-      - For Kind PR E2E, use a PR-specific workflow concurrency group and cancel superseded runs. For OpenShift PR E2E sharing a project, use one shared workflow-level group without the PR number, set `queue: max`, and set `cancel-in-progress: false` so concurrent PR runs wait and deploy one at a time.
+      - Before generating `pr-e2e-tests.yml`, confirm the quickstart can run in Kind. OpenShift-only tests belong in nightly workflows.
+      - Use a PR-specific workflow concurrency group and cancel superseded runs.
 - [ ] 6. Configure repo secrets/vars (see references/secrets-and-variables.md)
 - [ ] 7. When publishing images, invoke `subagents/build-and-push-prompt.md` to add the self-contained workflow for push to main/dev and manual dispatch
 - [ ] 8. When design requires nightly testing, invoke `subagents/nightly-tests-prompt.md`. When dev→main promotion is required, add both the [promotion PR workflow](./references/create-dev-to-main-pr-workflow.yml) and the [dev version-bump PR workflow](./references/create-dev-to-main-bump-pr-workflow.yml), plus the [release helper](./references/bump_release.py) and [release manifest](./references/bump-release.manifest.json).
@@ -75,19 +73,19 @@ workflow merely to make the generated workflow work.
 |-----------|----------|
 | Makefile as CI API | Workflows run `make <target>`; no duplicated install logic in YAML |
 | Pin tool versions | Pin the tools this quickstart uses; when it uses uv, workflow `UV_VERSION` must match the Makefile |
-| Concurrency | Kind PR E2E: workflow group by PR number/run ID with `cancel-in-progress: true`. OpenShift PR E2E sharing a project: one shared workflow-level group without the PR number, `queue: max`, and `cancel-in-progress: false`. |
-| Split by risk/cost | Fast lint/unit on `pull_request`; heavy Kind/evals on `pull_request_target` or schedule |
+| Concurrency | PR E2E: workflow group by PR number/run ID with `cancel-in-progress: true`. |
+| Split by risk/cost | Fast lint/unit and Kind E2E on `pull_request`; heavy secret-dependent evals on schedule |
 | Fail fast on secrets | First step validates required secrets before checkout/cluster work |
 | Debug on failure | `if: failure()` → composite `inspect` (or upload cluster logs) |
 | Artifacts | Tar and upload `evaluations/results` (or test reports) with `retention-days: 30` |
-| Fork safety | `pull_request` for untrusted code; `pull_request_target` only when org secrets are required — checkout `github.event.pull_request.head.sha` |
+| Fork safety | Use `pull_request` for PR workflows and do not expose repository secrets to PR code |
 
 ## Workflow set (choose per design)
 
 | Workflow file | Trigger | Purpose |
 |---------------|---------|---------|
 | `pr-checks.yml` | `pull_request` | Applicable dependency checks, lint, mypy/ruff, Helm export/kubeconform, unit tests |
-| `pr-e2e-tests.yml` | `pull_request_target`, schedule, `workflow_dispatch` | Kind deploy via shared `quickstart-ci-testing` actions + integration + short evals |
+| `pr-e2e-tests.yml` | `pull_request`, schedule, `workflow_dispatch` | Kind deploy via shared `quickstart-ci-testing` actions + integration + short tests; no repository secrets or variables |
 | `pr-branch-check.yml` | `pull_request` → `main` | Enforce `dev` or `dev-<sha>` source branch |
 | `build-and-push.yaml` | `push` to `main`/`dev`, `workflow_dispatch` | Self-contained build and push using Makefile targets; validates OCI tags and supports `FORCE_BUILD_ALL=TRUE` on manual dispatch to override the optional image-needed target |
 | `test-<slug>.yml` | `workflow_call`, `workflow_dispatch` | Reusable deploy + test + teardown against a real OpenShift namespace, via actions copied from `quickstart-ci-testing` — generated by `subagents/nightly-tests-prompt.md` |
@@ -182,7 +180,7 @@ Build-and-push generation is delegated to [the dedicated prompt](./subagents/bui
 
 ## Secrets and variables
 
-Configure in GitHub **before** enabling `pull_request_target` E2E workflows:
+Configure in GitHub before enabling workflows that need repository secrets:
 
 - **Secrets:** `LLM_API_TOKEN_EVAL`, `LLM_API_TOKEN_INFERENCE`, `QUAY_USERNAME`, `QUAY_PASSWORD`
 - **Variables:** `LLM_URL_EVAL`, `LLM_ID_INFERENCE`, `LLM_INFERENCE`, `LLM_URL_INFERENCE`
@@ -229,7 +227,7 @@ bash scripts/ci/kind-with-registry.sh
 make helm-install-test NAMESPACE=test REGISTRY=localhost:5001 ...
 ```
 
-Open a PR and confirm workflows pass. For `pull_request_target`, validate from a branch in the same repo (fork PRs may not receive secrets).
+Open a PR and confirm workflows pass. PR E2E workflows use `pull_request` and do not receive repository secrets; run secret-dependent checks in nightly workflows.
 
 Before reporting a PR E2E workflow complete, verify every local `uses: ./...`
 path exists and inspect copied actions for repository-relative script references.
