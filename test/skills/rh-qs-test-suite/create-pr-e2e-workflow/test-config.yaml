@@ -1,4 +1,6 @@
 run-skill-command: Add the pr-e2e-tests.yml workflow to qs-test-quickstart.
+question-answer-context: |
+  Proceed without adding or referencing repository secrets or variables.
 execution:
   network: required
   external-dependencies:
@@ -25,5 +27,8 @@ validation-options:
     run-quickstart-tests. Confirm the shared actions from
     quickstart-ci-testing are copied under .github/actions. Do not require
     unrelated files or baseline-tree differences outside this scope. Confirm
-    Confirm it does not reference repository secrets or variables.
-    Confirm it includes a comment that deployment must not require secrets.
+    it does not reference repository secrets or variables.
+    Confirm a YAML comment beside the Make commands states that this
+    quickstart's helm-install-test, test-short-e2e, and test-short-eval targets
+    require MODEL_ID, MODEL_URL, and MODEL_API_KEY, which are unavailable to
+    pull_request runs and belong in nightly testing.

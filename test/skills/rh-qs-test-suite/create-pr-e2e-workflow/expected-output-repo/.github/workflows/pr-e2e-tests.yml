@@ -1,4 +1,3 @@
-# This workflow works only when deploying the quickstart does not require secrets.
 name: Pull Request - Integration + End to End Tests
 
 on:
@@ -45,6 +44,7 @@ jobs:
           use_kind: true
           build_images: true
           kind_pre_deploy_command: "make helm-depend"
+          # This quickstart's helm-install-test, test-short-e2e, and test-short-eval targets require MODEL_ID, MODEL_URL, and MODEL_API_KEY, which are unavailable to pull_request runs and belong in nightly testing.
           deploy_command: "make helm-install-test"
           build_images_command: "make build-all-images"
           push_images_command: "make push-all-images"

@@ -55,6 +55,7 @@ workflow merely to make the generated workflow work.
       - For `pr-e2e-tests.yml`, pass the PR head branch name (`github.event.pull_request.head.ref`) to `setup-and-deploy`; the shared clone action accepts branches/tags, not commit SHAs.
       - Use `test-short-e2e` as the required PR E2E target. Include `test-short-eval` only when that target already exists.
       - Do not add secrets or repository variables to `pr-e2e-tests.yml`. Run tests that require repository configuration in nightly workflows.
+      - If this quickstart's PR E2E Make targets require credentials unavailable to `pull_request` runs, add a YAML comment beside the affected Make commands naming the targets and required values, and stating that they are unavailable to PR runs and belong in nightly testing. Do not add a generic comment claiming deployment does not require secrets, add secret references, or substitute a runtime warning for the comment.
       - For Kind PR E2E, infer image-build requirements from the Makefile: when `build-all-images` and `push-all-images` targets exist, set `build_images: true` and explicitly map those targets.
       - Set `upload_retention_days: 30` when uploading test results through `run-quickstart-tests`.
       - Before generating `pr-e2e-tests.yml`, confirm the quickstart can run in Kind. OpenShift-only tests belong in nightly workflows.
