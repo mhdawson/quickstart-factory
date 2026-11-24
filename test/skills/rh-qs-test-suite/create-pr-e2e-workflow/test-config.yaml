@@ -16,7 +16,9 @@ validation-options:
     the base branch for trusted local actions, then passes the PR head repository
     and the PR head branch name (github.event.pull_request.head.ref, not a commit
     SHA) to .github/actions/setup-and-deploy with use_kind and build_images
-    enabled. Confirm it invokes .github/actions/run-quickstart-tests and
+    enabled. Confirm workflow concurrency remains scoped to a PR or run ID with
+    cancel-in-progress enabled so a newer commit replaces that PR's stale run.
+    Confirm it invokes .github/actions/run-quickstart-tests and
     .github/actions/cleanup, runs the fixture's exact make targets
     helm-depend, helm-install-test, sync-evaluations, test-short-e2e,
     test-short-eval, and helm-uninstall, and uploads evaluations/results through

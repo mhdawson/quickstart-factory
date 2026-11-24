@@ -60,6 +60,7 @@ workflow merely to make the generated workflow work.
       - Set `upload_retention_days: 30` when uploading test results through `run-quickstart-tests`.
       - For OpenShift PR E2E with `build_images: true`, the shared `setup-and-deploy` action provisions an ephemeral project registry, builds and pushes through `localhost:5001`, and deploys with the in-cluster registry address.
       - Before generating `pr-e2e-tests.yml`, inspect what the quickstart deploys and uses to decide whether it is OpenShift-only or also Kind-compatible. Use OpenShift only when Kind cannot support the required workload; otherwise use Kind for PR E2E.
+      - For Kind PR E2E, use a PR-specific workflow concurrency group and cancel superseded runs. For OpenShift PR E2E sharing a project, use one shared workflow-level group without the PR number, set `queue: max`, and set `cancel-in-progress: false` so concurrent PR runs wait and deploy one at a time.
 - [ ] 6. Configure repo secrets/vars (see references/secrets-and-variables.md)
 - [ ] 7. When publishing images, invoke `subagents/build-and-push-prompt.md` to add the self-contained workflow for push to main/dev and manual dispatch
 - [ ] 8. When design requires nightly testing, invoke `subagents/nightly-tests-prompt.md`. When dev→main promotion is required, add both the [promotion PR workflow](./references/create-dev-to-main-pr-workflow.yml) and the [dev version-bump PR workflow](./references/create-dev-to-main-bump-pr-workflow.yml), plus the [release helper](./references/bump_release.py) and [release manifest](./references/bump-release.manifest.json).
@@ -74,7 +75,7 @@ workflow merely to make the generated workflow work.
 |-----------|----------|
 | Makefile as CI API | Workflows run `make <target>`; no duplicated install logic in YAML |
 | Pin tool versions | Pin the tools this quickstart uses; when it uses uv, workflow `UV_VERSION` must match the Makefile |
-| Concurrency | `group: ${{ github.workflow }}-${{ github.event.pull_request.number }}` + `cancel-in-progress: true` on PRs |
+| Concurrency | Kind PR E2E: workflow group by PR number/run ID with `cancel-in-progress: true`. OpenShift PR E2E sharing a project: one shared workflow-level group without the PR number, `queue: max`, and `cancel-in-progress: false`. |
 | Split by risk/cost | Fast lint/unit on `pull_request`; heavy Kind/evals on `pull_request_target` or schedule |
 | Fail fast on secrets | First step validates required secrets before checkout/cluster work |
 | Debug on failure | `if: failure()` → composite `inspect` (or upload cluster logs) |

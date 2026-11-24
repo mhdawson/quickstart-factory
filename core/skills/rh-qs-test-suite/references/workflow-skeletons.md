@@ -87,7 +87,16 @@ Before generating `pr-e2e-tests.yml`, determine what the quickstart deploys and 
 5. If the quickstart can run in both OpenShift and Kind, use Kind with `use_kind: true` and `build_images: true` for PR E2E because it is isolated and does not require cluster secrets.
 6. If compatibility is ambiguous, ask the user instead of guessing.
 
-Always include `permissions: {contents: read}` and use a PR-safe concurrency group based on `github.event.pull_request.number || github.run_id`. For `pull_request_target`, checkout the trusted base branch before invoking local actions; pass the PR head repository and branch to `setup-and-deploy`. If the workflow uses OpenShift credentials, restrict the job to same-repository pull requests and validate required secrets before deployment.
+Always include `permissions: {contents: read}`. Kind PR E2E can use a PR-specific workflow group with `cancel-in-progress: true`. For OpenShift PR E2E sharing a project, use one shared workflow-level group without the PR number, `queue: max`, and `cancel-in-progress: false` so runs from multiple PRs wait for the shared project and execute one at a time. Same-PR reruns also queue as separate runs.
+
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.repository }}-openshift
+  queue: max
+  cancel-in-progress: false
+```
+
+For `pull_request_target`, checkout the trusted base branch before invoking local actions; pass the PR head repository and branch to `setup-and-deploy`. If the workflow uses OpenShift credentials, restrict the job to same-repository pull requests and validate required secrets before deployment.
 
 Set `persist-credentials: false` on the trusted-base checkout. For image builds,
 explicitly pass `build_images_command` and `push_images_command` mapped to

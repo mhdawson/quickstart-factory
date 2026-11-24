@@ -18,6 +18,9 @@ validation-options:
     use_kind to false, build the PR head images by enabling build_images, and
     pass PROD_TOKEN and PROD_SERVER to setup-and-deploy. Confirm it runs make
     test-short-e2e and uses the PR head branch name rather than a commit SHA.
+    Confirm workflow-level concurrency uses one shared repository/workflow group
+    without the PR number, sets queue to max and cancel-in-progress to false, so
+    multiple PR runs queue and execute one at a time.
     Confirm the cached setup-and-deploy action supports this combination: with
     use_kind false and build_images true, it must invoke setup-openshift-registry,
     build and push images through localhost:5001, and deploy with the action’s

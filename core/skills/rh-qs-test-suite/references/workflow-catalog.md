@@ -29,7 +29,7 @@ with:
 
 | File | Workflow name | Jobs | Notes |
 |------|---------------|------|-------|
-| `pr-e2e-tests.yml` | Pull Request - Integration + End to End Tests | `e2e-tests` | Validates `LLM_API_TOKEN_EVAL`; uses shared `quickstart-ci-testing` actions (`setup-and-deploy`, `run-quickstart-tests`, `cleanup`) on Kind; daily cron `0 2 * * *` |
+| `pr-e2e-tests.yml` | Pull Request - Integration + End to End Tests | `e2e-tests` | Uses shared `quickstart-ci-testing` actions (`setup-and-deploy`, `run-quickstart-tests`, `cleanup`). Kind uses per-PR concurrency; OpenShift runs sharing a project use a shared workflow group with `queue: max` and no cancellation; daily cron `0 2 * * *` |
 
 ## Push / release
 
