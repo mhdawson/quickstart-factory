@@ -1,7 +1,7 @@
 ---
 name: github-actions-kind-e2e-llm-eval-suite
 description: Kind-based E2E CI with LLM evaluation suite across PR, nightly, and pip-install-build workflows
-summary: "Implements 19 GitHub Actions workflows in three tiers — PR checks (flake8/black/isort/mypy linting, kubeconform Helm validation, unit tests), Kind-based E2E integration tests (session serialization/reclaim, short-response via pull_request_target with SHA-pinned checkout), and nightly long-conversation evaluation suites against dev/main branches using 8B models for PRs and 70B for nightlies via separate LLM secrets (LLM_API_TOKEN_EVAL vs LLM_API_TOKEN_EVAL_70B) and endpoints (LLM_URL_INFERENCE vs LLM_URL_EVAL). Use when building an AI agent quickstart requiring comprehensive CI that spans quality gates, live LLM E2E testing in ephemeral Kind clusters, and scheduled evaluation regression suites with tarball artifact collection (30-day retention). The reusable Kind composite action (.github/actions/kind/action.yaml) orchestrates Kind v0.30.0 cluster setup with local registry (kind-with-registry.sh at localhost:5001), image build/push, and Helm deployment, supporting both uv-default and pip-fallback builds (use_pip_install input) with configurable replica counts (1 for nightlies, 2 for PR E2E). Critical gotcha: PR E2E must use pull_request_target (not pull_request) with SHA-pinned checkout to access repository secrets for LLM API tokens, pip-install builds are tested separately via pr-pip-install-build.yml to prevent QEMU/M1 regression, and all E2E workflows share a daily cron backstop (0 2 * * *) ensuring tests run even without open PRs."
+summary: "Implements 19 GitHub Actions workflows in three tiers — PR checks (flake8/black/isort/mypy linting, kubeconform Helm validation, unit tests), Kind-based E2E integration tests (session serialization/reclaim and short-response), and nightly long-conversation evaluation suites against dev/main branches using separate LLM secrets (LLM_API_TOKEN_EVAL vs LLM_API_TOKEN_EVAL_70B) and endpoints (LLM_URL_INFERENCE vs LLM_URL_EVAL). Use when building an AI agent quickstart requiring comprehensive CI that spans quality gates, E2E testing in ephemeral Kind clusters, and scheduled evaluation regression suites with tarball artifact collection (30-day retention). The reusable Kind composite action (.github/actions/kind/action.yaml) orchestrates Kind v0.30.0 cluster setup with local registry (kind-with-registry.sh at localhost:5001), image build/push, and Helm deployment, supporting both uv-default and pip-fallback builds (use_pip_install input). Current Factory-generated PR E2E workflows use pull_request without repository secrets or variables; credential-dependent evaluations run nightly."
 metadata:
   type: deployment-pattern
 tags:
@@ -86,28 +86,7 @@ jobs:
 
 ### PR E2E with Integration Tests
 
-Uses `pull_request_target` for secret access with SHA-pinned checkout:
-
-```yaml
-# .github/workflows/pr-e2e-tests.yml (excerpt)
-on:
-  pull_request_target:
-    types: [opened, synchronize, reopened]
-  schedule:
-    - cron: '0 2 * * *'
-jobs:
-  e2e-tests:
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-      - uses: ./.github/actions/kind
-        with:
-          replica_count: "2"
-      - run: make test-session-serialization-integration
-      - run: make test-session-reclaim-integration
-      - run: make test-short-resp-integration-request-mgr
-```
+Current Factory-generated PR E2E workflows use `pull_request`, do not receive repository secrets or variables, and run only tests that can deploy and execute without repository configuration. Move credential-dependent evaluations to nightly workflows.
 
 ### Nightly Evaluation Matrix
 
@@ -156,9 +135,9 @@ All E2E workflows collect evaluation results as tarball artifacts:
 
 ## Gotchas
 
-- PR E2E uses `pull_request_target` (not `pull_request`) to access repository secrets for LLM API tokens, with `ref: ${{ github.event.pull_request.head.sha }}` to pin to the PR commit (see `.github/workflows/pr-e2e-tests.yml`)
+- Current Factory PR E2E workflows use `pull_request` without repository secrets or variables; credential-dependent evaluations run nightly.
 - The `pr-pip-install-build.yml` workflow tests the pip fallback build path (`USE_PIP_INSTALL=true`) separately from the default uv build, ensuring QEMU/M1 compatibility does not regress (see `.github/workflows/pr-pip-install-build.yml`)
-- Nightly workflows use different LLM secrets (`LLM_API_TOKEN_EVAL` vs `LLM_API_TOKEN_EVAL_70B`) allowing evaluation against different model sizes (8B for PRs, 70B for nightlies) (see nightly workflow files)
+- Nightly workflows use different LLM secrets (`LLM_API_TOKEN_EVAL` vs `LLM_API_TOKEN_EVAL_70B`) allowing evaluation against different model sizes (see nightly workflow files)
 - All E2E workflows share the `pr-e2e-tests.yml` schedule (`cron: '0 2 * * *'`) as a daily backstop, in addition to their own PR triggers, ensuring tests run even without PRs (see `.github/workflows/pr-e2e-tests.yml`)
 
 ## Related Patterns

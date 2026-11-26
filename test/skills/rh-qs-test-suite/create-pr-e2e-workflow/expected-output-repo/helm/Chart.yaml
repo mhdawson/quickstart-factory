@@ -1,0 +1,6 @@
+apiVersion: v2
+name: pr-e2e-ci-fixture
+description: Minimal chart for PR E2E workflow validation
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

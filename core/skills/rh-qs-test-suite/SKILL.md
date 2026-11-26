@@ -35,7 +35,7 @@ workflow merely to make the generated workflow work.
 ## What it does
 
 1. Splits CI into **focused workflows** (quality, unit tests, Kind E2E, evals, image build) instead of one monolithic job
-2. Adds **composite actions** under `.github/actions/` (`prepare-runner`, `kind`, `inspect`)
+2. Adds **composite actions** under `.github/actions/`; PR E2E and nightly both copy the shared actions from `quickstart-ci-testing`
 3. Adds **`scripts/ci/`** helpers (Kind + local registry, optional integration hooks)
 4. Defines a **Makefile CI contract** so workflows only call `make` targets
 5. Documents required **secrets and repository variables**
@@ -47,14 +47,22 @@ workflow merely to make the generated workflow work.
 ```
 - [ ] 1. Read design testing strategy + PRD eval requirements
 - [ ] 2. Add Makefile CI targets (see references/makefile-ci-contract.md)
-- [ ] 3. Add scripts/ci/kind-with-registry.sh (Podman-compatible)
-- [ ] 4. Add composite actions (prepare-runner, kind, inspect)
+- [ ] 3. For a Kind workflow using the shared `setup-kind` action, copy its companion `scripts/ci/kind-with-registry.sh` from `quickstart-ci-testing` rather than recreating it. Use the diff-and-prompt rule when the destination already exists.
+- [ ] 4. Add composite actions. For PR E2E or nightly, copy the shared `quickstart-ci-testing` actions and every repository-relative companion file they reference, following the shallow-clone/diff/prompt process from `subagents/nightly-tests-prompt.md`.
 - [ ] 5. Add PR workflows (checks, e2e, branch policy — as needed), starting from
       the matching workflow skeleton and adapting only repo-specific setup and
       Make targets
+      - For `pr-e2e-tests.yml`, pass the PR head branch name (`github.event.pull_request.head.ref`) to `setup-and-deploy`; the shared clone action accepts branches/tags, not commit SHAs.
+      - Use `test-short-e2e` as the required PR E2E target. Include `test-short-eval` only when that target already exists.
+      - Do not add secrets or repository variables to `pr-e2e-tests.yml`. Run tests that require repository configuration in nightly workflows.
+      - If this quickstart's PR E2E Make targets require credentials unavailable to `pull_request` runs, add a YAML comment beside the affected Make commands naming the targets and required values, and stating that they are unavailable to PR runs and belong in nightly testing. Do not add a generic comment claiming deployment does not require secrets, add secret references, or substitute a runtime warning for the comment.
+      - For Kind PR E2E, infer image-build requirements from the Makefile: when `build-all-images` and `push-all-images` targets exist, set `build_images: true` and explicitly map those targets.
+      - Set `upload_retention_days: 30` when uploading test results through `run-quickstart-tests`.
+      - Before generating `pr-e2e-tests.yml`, confirm the quickstart can run in Kind. OpenShift-only tests belong in nightly workflows.
+      - Use a PR-specific workflow concurrency group and cancel superseded runs.
 - [ ] 6. Configure repo secrets/vars (see references/secrets-and-variables.md)
 - [ ] 7. When publishing images, invoke `subagents/build-and-push-prompt.md` to add the self-contained workflow for push to main/dev and manual dispatch
-- [ ] 8. When design requires nightly testing, invoke `subagents/nightly-tests-prompt.md`. When dev→main promotion is required, add both the [promotion PR workflow](./references/create-dev-to-main-pr-workflow.yml) and the [dev version-bump PR workflow](./references/create-dev-to-main-bump-r-workflow.yml), plus the [release helper](./references/bump_release.py) and [release manifest](./references/bump-release.manifest.json).
+- [ ] 8. When design requires nightly testing, invoke `subagents/nightly-tests-prompt.md`. When dev→main promotion is required, add both the [promotion PR workflow](./references/create-dev-to-main-pr-workflow.yml) and the [dev version-bump PR workflow](./references/create-dev-to-main-bump-pr-workflow.yml), plus the [release helper](./references/bump_release.py) and [release manifest](./references/bump-release.manifest.json).
       Adapt the manifest to the quickstart's version-bearing files. The bump workflow creates a version update PR into `dev`; the promotion workflow creates a separate PR into `main`.
 - [ ] 9. Register required status checks in branch protection
 - [ ] 10. Open test PR and confirm all workflows green
@@ -66,27 +74,25 @@ workflow merely to make the generated workflow work.
 |-----------|----------|
 | Makefile as CI API | Workflows run `make <target>`; no duplicated install logic in YAML |
 | Pin tool versions | Pin the tools this quickstart uses; when it uses uv, workflow `UV_VERSION` must match the Makefile |
-| Concurrency | `group: ${{ github.workflow }}-${{ github.event.pull_request.number }}` + `cancel-in-progress: true` on PRs |
-| Split by risk/cost | Fast lint/unit on `pull_request`; heavy Kind/evals on `pull_request_target` or schedule |
+| Concurrency | PR E2E: workflow group by PR number/run ID with `cancel-in-progress: true`. |
+| Split by risk/cost | Fast lint/unit and Kind E2E on `pull_request`; heavy secret-dependent evals on schedule |
 | Fail fast on secrets | First step validates required secrets before checkout/cluster work |
 | Debug on failure | `if: failure()` → composite `inspect` (or upload cluster logs) |
 | Artifacts | Tar and upload `evaluations/results` (or test reports) with `retention-days: 30` |
-| Fork safety | `pull_request` for untrusted code; `pull_request_target` only when org secrets are required — checkout `github.event.pull_request.head.sha` |
+| Fork safety | Use `pull_request` for PR workflows and do not expose repository secrets to PR code |
 
 ## Workflow set (choose per design)
 
 | Workflow file | Trigger | Purpose |
 |---------------|---------|---------|
 | `pr-checks.yml` | `pull_request` | Applicable dependency checks, lint, mypy/ruff, Helm export/kubeconform, unit tests |
-| `pr-e2e-tests.yml` | `pull_request_target`, schedule, `workflow_dispatch` | Kind deploy + integration + short evals |
-| `pr-pip-install-build.yml` | `pull_request` | Validate alternate install path (`use_pip_install`) |
-| `pr-evaluation-check.yml` | `pull_request_target` | Known-bad conversation / regression eval gate |
+| `pr-e2e-tests.yml` | `pull_request`, schedule, `workflow_dispatch` | Kind deploy via shared `quickstart-ci-testing` actions + integration + short tests; no repository secrets or variables |
 | `pr-branch-check.yml` | `pull_request` → `main` | Enforce `dev` or `dev-<sha>` source branch |
 | `build-and-push.yaml` | `push` to `main`/`dev`, `workflow_dispatch` | Self-contained build and push using Makefile targets; validates OCI tags and supports `FORCE_BUILD_ALL=TRUE` on manual dispatch to override the optional image-needed target |
 | `test-<slug>.yml` | `workflow_call`, `workflow_dispatch` | Reusable deploy + test + teardown against a real OpenShift namespace, via actions copied from `quickstart-ci-testing` — generated by `subagents/nightly-tests-prompt.md` |
 | `nightly-main.yml` / `nightly-<dev-branch>.yml` | `schedule`, `workflow_dispatch` | Thin scheduled callers of `test-<slug>.yml`, one per long-lived branch — generated by `subagents/nightly-tests-prompt.md` |
 | `create-dev-to-main-pr.yml` | `workflow_dispatch` | Promotion PR requiring aligned release artifacts and a dev version later than main, with temp branch |
-| `create-dev-to-main-bump-r.yml` | `workflow_dispatch` | Bumps the dev release version and opens or updates a PR into `dev` |
+| `create-dev-to-main-bump-pr.yml` | `workflow_dispatch` | Bumps the dev release version and opens or updates a PR into `dev` |
 
 Full catalog and naming conventions: [references/workflow-catalog.md](./references/workflow-catalog.md)
 
@@ -96,15 +102,15 @@ Full catalog and naming conventions: [references/workflow-catalog.md](./referenc
 .github/
 ├── workflows/
 │   ├── pr-checks.yml
-│   ├── pr-e2e-tests.yml          # if integration/e2e in design
+│   ├── pr-e2e-tests.yml          # if integration/e2e in design; uses shared `quickstart-ci-testing` actions
 │   ├── pr-branch-check.yml         # if using dev/main promotion model
 │   ├── build-and-push.yaml         # if publishing to quay.io/rh-ai-quickstart
 │   ├── create-dev-to-main-pr.yml   # if promoting dev releases to main
-│   └── create-dev-to-main-bump-r.yml # create version bump PRs on dev
+│   └── create-dev-to-main-bump-pr.yml # create version bump PRs on dev
 ├── actions/
-│   ├── prepare-runner/action.yaml
-│   ├── kind/action.yaml
-│   └── inspect/action.yml
+│   ├── setup-and-deploy/action.yml
+│   ├── run-quickstart-tests/action.yml
+│   └── cleanup/action.yml
 scripts/ci/
 └── kind-with-registry.sh
 scripts/
@@ -116,13 +122,7 @@ Skeleton YAML: [references/workflow-skeletons.md](./references/workflow-skeleton
 
 ## Composite actions
 
-| Action | Role |
-|--------|------|
-| `prepare-runner` | Free disk (`jlumbroso/free-disk-space`); log memory/swap before Kind |
-| `kind` | Install Kind → registry cluster → `make build/push` → `make helm-install-test` |
-| `inspect` | On failure, capture namespace/events/logs (stub OK until wired) |
-
-Details and inputs: [references/composite-actions.md](./references/composite-actions.md)
+PR E2E and nightly use the shared `quickstart-ci-testing` actions (`setup-and-deploy`, `run-quickstart-tests`, and `cleanup`). Copy those actions into `.github/actions/` before generating either workflow, along with repository-relative support files referenced by the actions. In particular, the shared `setup-kind` action invokes `scripts/ci/kind-with-registry.sh` from the quickstart root.
 
 ## Makefile CI contract
 
@@ -181,7 +181,7 @@ Build-and-push generation is delegated to [the dedicated prompt](./subagents/bui
 
 ## Secrets and variables
 
-Configure in GitHub **before** enabling `pull_request_target` E2E workflows:
+Configure in GitHub before enabling workflows that need repository secrets:
 
 - **Secrets:** `LLM_API_TOKEN_EVAL`, `LLM_API_TOKEN_INFERENCE`, `QUAY_USERNAME`, `QUAY_PASSWORD`
 - **Variables:** `LLM_URL_EVAL`, `LLM_ID_INFERENCE`, `LLM_INFERENCE`, `LLM_URL_INFERENCE`
@@ -208,9 +208,9 @@ For repos using **dev → main**: require `Validate PR comes from dev branch` on
 | Profile | Include |
 |---------|---------|
 | **Minimal** | `pr-checks.yml` only (extends scaffold `ci.yaml` pattern) |
-| **Standard** | `pr-checks.yml` + `pr-e2e-tests.yml` + `kind` action + `scripts/ci/` |
-| **Agent + evals** | Standard + `pr-evaluation-check.yml` + eval artifact upload |
-| **Release train** | Full + `pr-branch-check.yml` + `build-and-push.yaml` + `create-dev-to-main-bump-r.yml` + `create-dev-to-main-pr.yml` + nightlies |
+| **Standard** | `pr-checks.yml` + `pr-e2e-tests.yml` + shared `quickstart-ci-testing` actions + `scripts/ci/` |
+| **Agent + evals** | Standard + eval artifact upload through `pr-e2e-tests.yml` |
+| **Release train** | Full + `pr-branch-check.yml` + `build-and-push.yaml` + `create-dev-to-main-bump-pr.yml` + `create-dev-to-main-pr.yml` + nightlies |
 
 Match profile to the **Testing strategy** section in `.qs-factory/designs/architecture-spec.yaml`.
 
@@ -228,7 +228,13 @@ bash scripts/ci/kind-with-registry.sh
 make helm-install-test NAMESPACE=test REGISTRY=localhost:5001 ...
 ```
 
-Open a PR and confirm workflows pass. For `pull_request_target`, validate from a branch in the same repo (fork PRs may not receive secrets).
+Open a PR and confirm workflows pass. PR E2E workflows use `pull_request` and do not receive repository secrets; run secret-dependent checks in nightly workflows.
+
+Before reporting a PR E2E workflow complete, verify every local `uses: ./...`
+path exists and inspect copied actions for repository-relative script references.
+For Kind, confirm `scripts/ci/kind-with-registry.sh` exists, the workflow
+passes explicit build and push Make targets, and uploaded results use the
+30-day retention input.
 
 ## Output
 
@@ -245,12 +251,11 @@ When CI workflows are green on a test PR → **`rh-qs-verify-deploy`**, then **`
 ## References
 
 - [Workflow catalog](./references/workflow-catalog.md) — map each it-self-service-agent workflow to quickstart use
-- [Composite actions](./references/composite-actions.md) — `prepare-runner`, `kind`, `inspect`
 - [Secrets and variables](./references/secrets-and-variables.md)
 - [Makefile CI contract](./references/makefile-ci-contract.md)
 - [Workflow skeletons](./references/workflow-skeletons.md) — copy-paste YAML starters
 - [Build-and-push workflow reference](./references/build-and-push-workflow.yaml) — canonical local workflow for automatic and manual image publishing
-- [Create dev-to-main PR workflow](./references/create-dev-to-main-pr-workflow.yml) and [dev version-bump PR workflow](./references/create-dev-to-main-bump-r-workflow.yml) — canonical release train workflows
+- [Create dev-to-main PR workflow](./references/create-dev-to-main-pr-workflow.yml) and [dev version-bump PR workflow](./references/create-dev-to-main-bump-pr-workflow.yml) — canonical release train workflows
 - [Release helper](./references/bump_release.py) and [release manifest](./references/bump-release.manifest.json) — shared version read, update, and verification logic
 - [Build-and-push subagent](./subagents/build-and-push-prompt.md) — deterministic Make-target resolution and workflow generation
-- [Nightly actions catalog](./references/nightly-actions-catalog.md) — `quickstart-ci-testing` actions, reusable test workflow + nightly caller skeletons, provisioning script (used by `subagents/nightly-tests-prompt.md`)
+- [Shared CI actions catalog](./references/nightly-actions-catalog.md) — `quickstart-ci-testing` actions, reusable test workflow + nightly caller skeletons, provisioning script (used by PR E2E generation and `subagents/nightly-tests-prompt.md`)

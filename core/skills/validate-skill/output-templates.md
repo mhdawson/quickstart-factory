@@ -9,9 +9,10 @@ For each case, write these debugging artifacts under `test/skills/reports/<skill
 - `quickstart-output.tar.gz` — archive of the final `.rhoai-qs/qs-test-quickstart/` tree.
 
 The preferred coordinator also retains machine-readable phase evidence in each
-case directory (`preflight.json`, `completion.json`, `comparison.json`, runner
-and rater results, and process logs) and writes an aggregate
-`test/skills/reports/<skill-name>/validation-report.md`.
+case directory (`preflight.json`, `baseline-dependencies.json`, `completion.json`,
+`comparison.json`, runner and rater results, and process logs). It records the
+resolved dependency commits in the aggregate `baseline-dependencies.json` and
+writes an aggregate `test/skills/reports/<skill-name>/validation-report.md`.
 
 The report Markdown is:
 

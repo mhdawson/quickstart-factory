@@ -3,3 +3,7 @@ execution:
   network: required
   external-dependencies:
     - https://github.com/rh-ai-quickstart/quickstart-ci-testing
+baseline-dependencies:
+  - name: quickstart-ci-testing
+    repository: https://github.com/rh-ai-quickstart/quickstart-ci-testing
+    ref: main

@@ -60,3 +60,6 @@ brain.code-workspace
 
 # Fixture validation reports and captured disposable quickstart output.
 test/skills/reports/
+
+# Shared repositories fetched to materialize fixture expected-output baselines.
+test/skills/*/.shared-dependencies/

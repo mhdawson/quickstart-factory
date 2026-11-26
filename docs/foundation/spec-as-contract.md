@@ -362,10 +362,10 @@ testing_strategy:
       runs_on: "Every PR"
   integration_tests:
     scope: "API + DB + in-cluster services"
-    runs_on: "PR E2E workflow (rh-qs-test-suite)"
+    runs_on: "PR E2E on pull_request only when Kind deployment needs no repo secrets/vars"
   e2e_tests:
     scope: "Agent quality, RAG responses"
-    runs_on: "pull_request_target or nightly"
+    runs_on: "PR E2E on pull_request only when deployment and tests need no repo secrets/vars; otherwise nightly"
   helm_validation:
     scope: "Exported manifests valid"
     runs_on: "Every PR"

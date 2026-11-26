@@ -43,6 +43,7 @@ When the workflow is delegated through an external runner, preserve the caller's
 | [references/fixture-contract.md](./references/fixture-contract.md) | Before discovering cases |
 | [scripts/discover_cases.py](./scripts/discover_cases.py) | Phase 1 case discovery and validation |
 | [scripts/preflight_dependencies.py](./scripts/preflight_dependencies.py) | Before a network-enabled case runner |
+| [scripts/sync_baseline_dependencies.py](./scripts/sync_baseline_dependencies.py) | Refreshes repositories referenced by linked expected-output baselines |
 | [scripts/prepare_fixture.py](./scripts/prepare_fixture.py) | Before each case, to reset and copy its fixture |
 | [scripts/run_case.py](./scripts/run_case.py) | Synchronous case-runner gate and completion manifest |
 | [scripts/compare_baseline.py](./scripts/compare_baseline.py) | Before independent output rating |
@@ -68,6 +69,11 @@ Use `scripts/orchestrate_validation.py` to coordinate the phases below. It still
 delegates target-skill execution and independent rating to the supplied commands;
 the Python coordinator owns ordering, fixture isolation, evidence capture, schema
 validation, archives, and reports.
+
+The coordinator acquires a workspace-wide non-blocking lock before syncing
+baselines or changing reports. Since every case shares
+`.rhoai-qs/qs-test-quickstart/`, concurrent validation invocations are rejected;
+wait for the active run to finish before starting another.
 
 The runner and rater can be supplied as JSON command arrays, or selected through
 the foreground adapters in `runners/`. Adapter execution is synchronous and
@@ -142,7 +148,8 @@ Spawn the validation subagent with the fixed target slug `qs-test-quickstart`, t
 1. Run `python3 core/skills/validate-skill/scripts/discover_cases.py <skill-name> [--tests <test-one>,<test-two>]`. It resolves the target skill, selects all cases or only the named tests, finds them in lexical order, and validates their required inputs. Stop if it reports malformed or unknown selected tests. Do not validate or run unselected cases.
 2. Read the emitted JSON instead of manually enumerating or re-checking case paths.
 3. For a case with `execution.network: required`, run `python3 core/skills/validate-skill/scripts/preflight_dependencies.py <case-path>`. Preserve its JSON result as execution evidence. A failed preflight is an infrastructure warning, not permission to skip target execution; run the case runner in a network-enabled execution context and classify the case as `blocked` or `failed` if the runner cannot access the dependency.
-4. Read `spec-template.md` and write `test/skills/reports/<skill-name>/<case-name>/validation-spec.yaml` for each discovered case, recording the target skill, the case, the fixed quickstart slug `qs-test-quickstart`, its baseline path, and execution requirements.
+4. Run `python3 core/skills/validate-skill/scripts/sync_baseline_dependencies.py <skill-name> <selected-case-names...>` once for the selected cases. It refreshes each declared baseline dependency into `test/skills/<skill-name>/.shared-dependencies/` and records its commit under `test/skills/reports/<skill-name>/baseline-dependencies.json`. If a required baseline dependency cannot be fetched, mark affected cases `blocked`; do not compare against a missing or stale linked baseline.
+5. Read `spec-template.md` and write `test/skills/reports/<skill-name>/<case-name>/validation-spec.yaml` for each discovered case, recording the target skill, the case, the fixed quickstart slug `qs-test-quickstart`, its baseline path, and execution requirements.
 
 ### Phase 2: Run each case in isolation
 
@@ -158,7 +165,7 @@ Do not replace the case runner with hand-authored files in `.rhoai-qs/qs-test-qu
 
 ### Phase 3: Rate the output
 
-For each case whose `run_case.py` completion record has status `completed`, run `python3 core/skills/validate-skill/scripts/compare_baseline.py <case-path>`. Pass its JSON output, `validation_mode`, the optional `additional_validation_instructions` from `test-config.yaml`'s `validation-options` mapping, and the runner's recorded `conversation` to the independent output rater with [subagents/output-rater-prompt.md](./subagents/output-rater-prompt.md), along with the expected baseline and actual quickstart root. Pass the conversation as observable caller-to-target evidence, not as the runner's self-assessment. The rater judges the materiality of reported differences; it does not rediscover file inventories or hashes.
+For each case whose `run_case.py` completion record has status `completed`, run `python3 core/skills/validate-skill/scripts/compare_baseline.py <case-path>`. The comparator expands expected-output symlinks only when they resolve inside a baseline dependency declared in `test-config.yaml`; the actual quickstart output must still contain the generated files. Pass the JSON output, `validation_mode`, the optional `additional_validation_instructions` from `test-config.yaml`'s `validation-options` mapping, and the runner's recorded `conversation` to the independent output rater with [subagents/output-rater-prompt.md](./subagents/output-rater-prompt.md), along with the expected baseline and actual quickstart root. Pass the conversation as observable caller-to-target evidence, not as the runner's self-assessment. The rater judges the materiality of reported differences; it does not rediscover file inventories or hashes.
 
 The rater returns a 1–10 score with evidence. In the default `full-baseline` mode, a score of 10 requires the complete actual repository tree to match the approved post-run baseline, except paths explicitly excluded by the case's `comparison-ignore`. In `targeted` mode, score only the checks in `additional_validation_instructions`; do not penalize baseline-tree differences outside that scope. A blocked or failed execution has no quality score; record it as `blocked` or `failed`, not as a misleading low score.
 

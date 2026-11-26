@@ -262,8 +262,8 @@ Define the testing strategy per component. Note which `rh-qs-test-suite` profile
 |-------|-------|-----------|
 | Unit (Python) | Routes, schemas, services | Every PR (`pr-checks` / `ci.yaml`) |
 | Unit (TypeScript) | Components, hooks | Every PR |
-| Integration | API + DB + in-cluster services | PR E2E workflow (`rh-qs-test-suite`) |
-| E2E / LLM evals | Agent quality, RAG responses | `pull_request_target` or nightly |
+| Integration | API + DB + in-cluster services | PR E2E on `pull_request` only when Kind deployment needs no repo secrets/vars |
+| E2E / LLM evals | Agent quality, RAG responses | PR E2E only when deployment and tests need no repo secrets/vars; otherwise nightly |
 | Helm | Exported manifests valid | Every PR |
 
 #### Step 12: Write architecture spec

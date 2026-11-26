@@ -1,0 +1,34 @@
+run-skill-command: Add the pr-e2e-tests.yml workflow to qs-test-quickstart.
+question-answer-context: |
+  Proceed without adding or referencing repository secrets or variables.
+execution:
+  network: required
+  external-dependencies:
+    - https://github.com/rh-ai-quickstart/quickstart-ci-testing
+baseline-dependencies:
+  - name: quickstart-ci-testing
+    repository: https://github.com/rh-ai-quickstart/quickstart-ci-testing
+    ref: main
+validation-options:
+  mode: full-baseline
+  additional-instructions: |
+    Validate only the generated PR E2E workflow and the shared actions it uses.
+    Confirm .github/workflows/pr-e2e-tests.yml exists and triggers on
+    pull_request, workflow_dispatch, and schedule. Confirm it checks out
+    the base branch for local actions, then passes the PR head repository
+    and the PR head branch name (github.event.pull_request.head.ref, not a commit
+    SHA) to .github/actions/setup-and-deploy with use_kind and build_images
+    enabled. Confirm workflow concurrency remains scoped to a PR or run ID with
+    cancel-in-progress enabled so a newer commit replaces that PR's stale run.
+    Confirm it invokes .github/actions/run-quickstart-tests and
+    .github/actions/cleanup, runs the fixture's exact make targets
+    helm-depend, helm-install-test, sync-evaluations, test-short-e2e,
+    test-short-eval, and helm-uninstall, and uploads evaluations/results through
+    run-quickstart-tests. Confirm the shared actions from
+    quickstart-ci-testing are copied under .github/actions. Do not require
+    unrelated files or baseline-tree differences outside this scope. Confirm
+    it does not reference repository secrets or variables.
+    Confirm a YAML comment beside the Make commands states that this
+    quickstart's helm-install-test, test-short-e2e, and test-short-eval targets
+    require MODEL_ID, MODEL_URL, and MODEL_API_KEY, which are unavailable to
+    pull_request runs and belong in nightly testing.

@@ -1,0 +1,1 @@
+../../../../.shared-dependencies/quickstart-ci-testing/scripts/ci/kind-with-registry.sh
