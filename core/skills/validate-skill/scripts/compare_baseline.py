@@ -32,8 +32,12 @@ def is_within(path: Path, roots: list[Path]) -> bool:
     return False
 
 
-def entries(root: Path, allowed_external_roots: list[Path] | None = None) -> dict[str, dict[str, str | None]]:
-    """Return every tree entry, expanding links only to declared baseline dependencies."""
+def entries(
+    root: Path,
+    allowed_external_roots: list[Path] | None = None,
+    ignored_patterns: set[str] | None = None,
+) -> dict[str, dict[str, str | None]]:
+    """Return comparable entries, expanding links only to declared baseline dependencies."""
     root = root.resolve()
     allowed_roots = [path.resolve() for path in (allowed_external_roots or [])]
     result: dict[str, dict[str, str | None]] = {}
@@ -48,6 +52,8 @@ def entries(root: Path, allowed_external_roots: list[Path] | None = None) -> dic
                 path = Path(child.path)
                 relative = relative_directory / child.name
                 key = relative.as_posix()
+                if ignored_patterns and matches_ignore(key, ignored_patterns):
+                    continue
                 if child.is_symlink():
                     target = path.resolve(strict=True)
                     if target.is_dir():
@@ -90,6 +96,15 @@ def main() -> int:
     ignore_file = case / "comparison-ignore"
     ignored = {line.strip() for line in ignore_file.read_text().splitlines() if line.strip() and not line.lstrip().startswith("#")} if ignore_file.is_file() else set()
     config = yaml.safe_load((case / "test-config.yaml").read_text()) or {}
+    validate_qs_files = config.get("validate-qs-files", False)
+    if isinstance(validate_qs_files, str):
+        if validate_qs_files.lower() not in {"yes", "no"}:
+            parser.error("test-config.yaml validate-qs-files must be yes or no")
+        validate_qs_files = validate_qs_files.lower() == "yes"
+    elif not isinstance(validate_qs_files, bool):
+        parser.error("test-config.yaml validate-qs-files must be yes or no")
+    if not validate_qs_files:
+        ignored.update({".qs-factory", ".qs-factory/**"})
     baseline_dependencies = config.get("baseline-dependencies", [])
     if not isinstance(baseline_dependencies, list):
         parser.error("test-config.yaml baseline-dependencies must be a list")
@@ -106,8 +121,8 @@ def main() -> int:
             parser.error(f"baseline dependency cache must not be a symlink: {dependency_root}")
         allowed_external_roots.append(dependency_root)
     try:
-        expected_entries = {path: value for path, value in entries(expected, allowed_external_roots).items() if path not in METADATA_FILES}
-        actual_entries = entries(actual)
+        expected_entries = {path: value for path, value in entries(expected, allowed_external_roots, ignored).items() if path not in METADATA_FILES}
+        actual_entries = entries(actual, ignored_patterns=ignored)
     except (OSError, RuntimeError, ValueError) as error:
         parser.error(f"could not enumerate baseline or output tree: {error}")
     required_status = []
@@ -136,8 +151,9 @@ def main() -> int:
 
     extras = sorted(path for path, entry in actual_entries.items() if entry["kind"] == "file" and path not in expected_entries and not matches_ignore(path, ignored))
     extra_paths = sorted(path for path in actual_entries if path not in expected_entries and not matches_ignore(path, ignored))
-    actual_files = sorted(path for path, entry in actual_entries.items() if entry["kind"] == "file")
-    print(json.dumps({"case": case.name, "required_paths": required_status, "differences": differences, "extra_files": extras, "extra_paths": extra_paths, "actual_files": actual_files, "actual_paths": sorted(actual_entries)}, indent=2))
+    actual_files = sorted(path for path, entry in actual_entries.items() if entry["kind"] == "file" and not matches_ignore(path, ignored))
+    actual_paths = sorted(path for path in actual_entries if not matches_ignore(path, ignored))
+    print(json.dumps({"case": case.name, "ignored_patterns": sorted(ignored), "required_paths": required_status, "differences": differences, "extra_files": extras, "extra_paths": extra_paths, "actual_files": actual_files, "actual_paths": actual_paths}, indent=2))
     return 0
 
 

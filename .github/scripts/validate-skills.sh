@@ -61,7 +61,10 @@ for skill in "${changed_skills[@]}"; do
   # We use process substitution to:
   # 1. Send all output (including ::error commands) to stdout for GitHub Actions
   # 2. Filter out ::error/::warning/::notice lines before writing to the summary
-  skill-validator check --strict --emit-annotations -o markdown "${SKILLS_DIR}/$skill/" \
+  # Factory skills use the canonical flat layout, subagents/, and extra
+  # frontmatter fields defined by docs/foundation/skill-directory-structure.md.
+  skill-validator check --strict --allow-extra-frontmatter --allow-flat-layouts \
+    --allow-dirs=subagents --emit-annotations -o markdown "${SKILLS_DIR}/$skill/" \
     | tee >(grep -v '^::' >> "${GITHUB_STEP_SUMMARY:-/dev/null}") || FAILED=1
 done
 

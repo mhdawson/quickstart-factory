@@ -20,9 +20,12 @@ You do **not** run `oc`, `kubectl`, or `gh secret set` at any point (per `rh-qs-
 **Input Parameters:**
 - `slug`: the quickstart's slug (for naming the namespace, ServiceAccount, and reusable workflow file)
 - `repo_root`: absolute or relative path to the quickstart repo root (your working directory)
+- `spec_path`: path to the refined test-suite spec (required for both invocation modes)
 - `invocation_mode`: `"standalone"` or `"full-pipeline"` — only affects your final report framing, not what you do
 
 ### Step 1: Resolve the Makefile contract
+
+Before inspecting targets, read `{spec_path}` and confirm it includes nightly testing. In `full-pipeline` mode, generate only the nightly files and support files included in the refined spec. If repository evidence contradicts the spec, stop and report the mismatch to the orchestrator; ask the user only if resolving the mismatch requires information or a decision they must supply.
 
 Read the `Makefile`. Look for the canonical targets the pipeline already establishes via `rh-qs-deploy`/`rh-qs-scaffold`:
 

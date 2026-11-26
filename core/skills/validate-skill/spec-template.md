@@ -16,6 +16,7 @@ cases:
     test_config: test/skills/<skill-name>/<case-name>/test-config.yaml
     run_skill_command: <text from test-config.yaml | null>
     question_answer_context: <text from test-config.yaml | null>
+    validate_qs_files: <true | false; defaults to false>
     validation_options:
       mode: full-baseline | targeted
       additional_instructions: <text from test-config.yaml | null>

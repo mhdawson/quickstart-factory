@@ -126,6 +126,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.base.ref || github.ref }}
+          persist-credentials: false
 
       # Adapt or remove these toolchain steps to match the quickstart.
       - uses: astral-sh/setup-uv@v6

@@ -1,9 +1,11 @@
 ---
 name: rh-qs-test-suite
-description: |
+description: >-
   Build production-grade GitHub Actions workflows for AI Quickstarts: split PR checks, Kind-based E2E,
-  LLM evaluations, image publish, nightly schedules, and dev→main promotion. Use after rh-qs-deploy
+  LLM evaluations, image publish, nightly schedules, and dev→main promotion. Use after rh-qs-debug-and-deploy
   when Helm and Makefile deploy targets exist, or when expanding CI beyond rh-qs-scaffold basics.
+argument-hint: "Build or update CI workflows for a quickstart, or request nightly or image publishing only"
+allowed-tools: Bash, Read, Write, Edit, Agent
 ---
 
 # rh-qs-test-suite
@@ -11,62 +13,116 @@ description: |
 **Category:** `github/`  
 **Reference implementation:** [it-self-service-agent](https://github.com/rh-ai-quickstart/it-self-service-agent) `.github/`
 
+## Goal
+
+Plan and implement the requested CI workflow set for the resolved quickstart, recording the planned scope and resulting files in `.qs-factory/pipeline/test-suite-spec.yaml` and `.qs-factory/pipeline/test-suite-manifest.yaml`.
+
+## Input
+
+- A full CI build-out, or a focused request for nightly testing or image publishing
+- Existing quickstart repository, Makefile, workflow files, and architecture testing strategy
+- Optional upstream `.qs-factory/designs/architecture-spec.yaml`, `.qs-factory/pipeline/deploy-manifest.yaml`, and `.qs-factory/pipeline/deploy-state.yaml`
+
+## Supporting Documents
+
+**Main agent reads:**
+
+- [Reasoning guardrails](./reasoning-guardrails.md)
+- [Spec template](./spec-template.md)
+- [Output templates](./output-templates.md)
+- Relevant files in `references/`
+
+**Subagents read:** their assigned prompt, the refined spec, and only the repository/reference files named by that prompt. Pass the prompt path to the subagent; do not load subagent prompts into the main context.
+
+| Subagent prompt | Used for |
+|---|---|
+| `subagents/validation-skill-prompt.md` | Phase 0 quickstart resolution |
+| `subagents/spec-validator-prompt.md` | Validate the proposed CI plan before implementation |
+| `subagents/ci-workflows-prompt.md` | Generate requested PR, Kind, branch-policy, and release workflows |
+| `subagents/build-and-push-prompt.md` | Image publishing workflow |
+| `subagents/nightly-tests-prompt.md` | Reusable OpenShift tests and nightly callers |
+
+## Workflow
+
+### Phase 0: Resolve quickstart
+
+This skill runs inside `.rhoai-qs/<slug>/`. List candidates with `ls -1 ../ 2>/dev/null` and invoke `subagents/validation-skill-prompt.md` before reading or writing quickstart files. Follow the result handling in `docs/foundation/validation-skill-template.md#main-agent-handling`.
+
+### Phase 1: Analyze and draft the spec
+
+Read the architecture testing strategy, relevant upstream manifests, Makefile, existing workflows, and the references needed for the request. Ask the user only for missing or ambiguous information needed to write the spec or complete the requested implementation. Check for an existing `test-suite-spec.yaml` and upstream content hashes before resuming. Write the initial spec to `.qs-factory/pipeline/test-suite-spec.yaml`; do not modify implementation files yet.
+
+For nightly-only and build-and-push-only requests, keep the spec scoped to that capability and invoke only its dedicated generator after spec validation. Treat the spec as the implementation plan; do not ask the user to approve it. Preserve the build-and-push prompt's rule that standalone mode changes only `.github/workflows/build-and-push.yaml`.
+
+### Phase 2: Validate and refine
+
+Invoke `subagents/spec-validator-prompt.md` with the spec and repository root. Fix blocker findings in the spec, write `.qs-factory/pipeline/test-suite-spec-refined.yaml`, and revalidate up to two times. Do not start implementation while blockers remain. Ask the user only when a blocker depends on information or a decision needed to finish the spec or implementation; otherwise resolve it from repository evidence.
+
+### Phase 3: Implement
+
+Invoke `subagents/ci-workflows-prompt.md` with `repo_root` and the refined `spec_path` for the requested PR, Kind, branch-policy, or release workflows. Use `subagents/build-and-push-prompt.md` with `repo_root`, `spec_path`, and `invocation_mode` for image publishing. Use `subagents/nightly-tests-prompt.md` with the resolved `slug`, `repo_root`, `spec_path`, and `invocation_mode` for nightly testing. Preserve existing target names and make only targets included in the refined spec.
+
+When a request includes more than one generator, run them sequentially where they may copy or update shared files, and give each the same refined spec. Do not add workflows omitted from the spec.
+
+### Phase 4: Post-validate and record
+
+Check every requested workflow and local action path, verify each `make <target>` call exists in the final Makefile, confirm the generated files match the refined spec, and record acceptance-criteria results and output paths in `.qs-factory/pipeline/test-suite-manifest.yaml` using [output-templates.md](./output-templates.md). Report any unverified GitHub settings as follow-up actions rather than claiming they were applied.
+
+## Guidelines
+
+- Treat the architecture testing strategy and the quickstart's actual Makefile as authoritative.
+- Keep PR workflows fork-safe: never expose repository secrets to `pull_request` code.
+- Do not invent Make targets, secrets, repository variables, branch models, or workflow requirements.
+- For Kind E2E, confirm the quickstart can run in Kind before generating the workflow.
+- Respect the focused-request scope gates. Ask the user only for information needed to draft the spec or complete implementation; do not request spec approval.
+- If required upstream inputs are missing, record the gap and ask for the missing information before writing dependent artifacts.
+
 For image publishing, use the skill-local [build-and-push workflow reference](./references/build-and-push-workflow.yaml) as the canonical pattern. It replaces the external example for this workflow.
 
 ## Trigger
 
-- Helm chart and Makefile deploy targets exist from **`rh-qs-deploy`** if not create it.
+- Run after **`rh-qs-debug-and-deploy`**, or when the user requests CI expansion for an existing quickstart.
 - Architecture spec **`.qs-factory/designs/architecture-spec.yaml`** defines testing strategy (unit / integration / E2E / evals) — this skill runs inside `.rhoai-qs/<slug>/` itself (the scaffolded quickstart repo), so the architecture spec is in `.qs-factory/` right there, no `../` needed
 - Optional: replace or extend minimal workflows from **`rh-qs-scaffold`**
 
 ## Nightly-only fast path
 
-If the request is scoped to nightly testing specifically (e.g. "add nightly testing to `<slug>`", "update the nightly workflow", "refresh the nightly CI setup") rather than the full CI build-out, skip straight to it: resolve the slug/repo as usual, then invoke **`subagents/nightly-tests-prompt.md`** directly (`invocation_mode: standalone`) and report its result. Do not run the PR-checks/E2E/build-and-push phases for this request — they are unrelated to what was asked. This is the same subagent step 8 below delegates to; the only difference is you stop after it instead of continuing the rest of the workflow.
+If the request is scoped to nightly testing specifically (e.g. "add nightly testing to `<slug>`", "update the nightly workflow", "refresh the nightly CI setup"), complete Phases 0–2 with a nightly-only spec, then invoke **`subagents/nightly-tests-prompt.md`** with the resolved slug, repo root, refined spec path, and `invocation_mode: standalone`; post-validate. Do not run unrelated phases.
 
 ## Build-and-push-only fast path
 
-If the request is scoped to image publishing specifically (e.g. "create only the build-and-push workflow", "update image publishing", "fix the build-and-push workflow") rather than the full CI build-out, resolve the quickstart repository and then invoke **`subagents/build-and-push-prompt.md`** directly (`invocation_mode: standalone`). Do not run the PR-checks/E2E/nightly/promotion phases for this request. This is the same subagent step 7 below delegates to; the only difference is you stop after it instead of continuing the rest of the workflow.
+If the request is scoped to image publishing specifically (e.g. "create only the build-and-push workflow", "update image publishing", "fix the build-and-push workflow"), complete Phases 0–2 with a build-and-push-only spec, then invoke **`subagents/build-and-push-prompt.md`** with the repo root, refined spec path, and `invocation_mode: standalone`; post-validate. Do not run unrelated phases.
 
 This is a hard scope gate: in standalone build-and-push mode, the only repository
 file this path may create or update is `.github/workflows/build-and-push.yaml`.
 Do not modify `Makefile`, `README.md`, Helm files, scripts, or any other
 workflow merely to make the generated workflow work.
 
-## What it does
+## CI capabilities
 
 1. Splits CI into **focused workflows** (quality, unit tests, Kind E2E, evals, image build) instead of one monolithic job
 2. Adds **composite actions** under `.github/actions/`; PR E2E and nightly both copy the shared actions from `quickstart-ci-testing`
 3. Adds **`scripts/ci/`** helpers (Kind + local registry, optional integration hooks)
 4. Defines a **Makefile CI contract** so workflows only call `make` targets
 5. Documents required **secrets and repository variables**
-6. Configures **branch protection** status checks to match workflow job names
+6. Identifies **branch protection** status checks that should match workflow job names
 7. Optionally adds **dev→main promotion** and **dev version-bump PR** workflows for mature quickstarts, and delegates **nightly** workflow generation to `subagents/nightly-tests-prompt.md` (also invokable on its own — see "Nightly-only fast path" above)
 
-## Workflow
+## CI generation requirements
 
-```
-- [ ] 1. Read design testing strategy + PRD eval requirements
-- [ ] 2. Add Makefile CI targets (see references/makefile-ci-contract.md)
-- [ ] 3. For a Kind workflow using the shared `setup-kind` action, copy its companion `scripts/ci/kind-with-registry.sh` from `quickstart-ci-testing` rather than recreating it. Use the diff-and-prompt rule when the destination already exists.
-- [ ] 4. Add composite actions. For PR E2E or nightly, copy the shared `quickstart-ci-testing` actions and every repository-relative companion file they reference, following the shallow-clone/diff/prompt process from `subagents/nightly-tests-prompt.md`.
-- [ ] 5. Add PR workflows (checks, e2e, branch policy — as needed), starting from
-      the matching workflow skeleton and adapting only repo-specific setup and
-      Make targets
-      - For `pr-e2e-tests.yml`, pass the PR head branch name (`github.event.pull_request.head.ref`) to `setup-and-deploy`; the shared clone action accepts branches/tags, not commit SHAs.
-      - Use `test-short-e2e` as the required PR E2E target. Include `test-short-eval` only when that target already exists.
-      - Do not add secrets or repository variables to `pr-e2e-tests.yml`. Run tests that require repository configuration in nightly workflows.
-      - If this quickstart's PR E2E Make targets require credentials unavailable to `pull_request` runs, add a YAML comment beside the affected Make commands naming the targets and required values, and stating that they are unavailable to PR runs and belong in nightly testing. Do not add a generic comment claiming deployment does not require secrets, add secret references, or substitute a runtime warning for the comment.
-      - For Kind PR E2E, infer image-build requirements from the Makefile: when `build-all-images` and `push-all-images` targets exist, set `build_images: true` and explicitly map those targets.
-      - Set `upload_retention_days: 30` when uploading test results through `run-quickstart-tests`.
-      - Before generating `pr-e2e-tests.yml`, confirm the quickstart can run in Kind. OpenShift-only tests belong in nightly workflows.
-      - Use a PR-specific workflow concurrency group and cancel superseded runs.
-- [ ] 6. Configure repo secrets/vars (see references/secrets-and-variables.md)
-- [ ] 7. When publishing images, invoke `subagents/build-and-push-prompt.md` to add the self-contained workflow for push to main/dev and manual dispatch
-- [ ] 8. When design requires nightly testing, invoke `subagents/nightly-tests-prompt.md`. When dev→main promotion is required, add both the [promotion PR workflow](./references/create-dev-to-main-pr-workflow.yml) and the [dev version-bump PR workflow](./references/create-dev-to-main-bump-pr-workflow.yml), plus the [release helper](./references/bump_release.py) and [release manifest](./references/bump-release.manifest.json).
-      Adapt the manifest to the quickstart's version-bearing files. The bump workflow creates a version update PR into `dev`; the promotion workflow creates a separate PR into `main`.
-- [ ] 9. Register required status checks in branch protection
-- [ ] 10. Open test PR and confirm all workflows green
-```
+The workflow generator follows the refined spec and the relevant files in `references/`. Treat the quickstart's Makefile, dependency manifests, and current workflows as authoritative. The reference target list and skeletons are examples, not requirements to add every target or use a particular package manager.
+
+- For `pr-e2e-tests.yml`, pass `github.event.pull_request.head.ref` to the shared clone action; it accepts branches/tags, not commit SHAs.
+- Set `persist-credentials: false` on the PR E2E `actions/checkout` step. This prevents the automatic `GITHUB_TOKEN` from remaining in Git config for later steps, even when the workflow uses no repository secrets or variables.
+- Use `test-short-e2e` as the PR E2E target. Include `test-short-eval` only when it already exists.
+- Never add secrets or repository variables to `pr-e2e-tests.yml`; keep secret-dependent tests in nightly workflows.
+- When PR E2E targets require values omitted by the secret-free PR policy, add a YAML comment beside the affected Make commands naming the targets and values, explicitly stating they are unavailable to `pull_request` runs, and noting they belong in nightly testing.
+- For Kind E2E, use `build_images: true` and explicitly map build/push targets when `build-all-images` and `push-all-images` exist.
+- Set `upload_retention_days: 30` when uploading test results through `run-quickstart-tests`.
+- Confirm the quickstart can run on Kind before generating a Kind workflow; OpenShift-only tests belong in nightly workflows.
+- Use PR-specific concurrency and cancel superseded runs.
+- Shared composite actions must include every repository-relative companion file they reference. Use the existing diff-and-prompt procedure when destination files differ.
+- Document required secrets, variables, and status checks; do not claim GitHub settings were applied unless they actually were.
 
 ## Design principles (from it-self-service-agent)
 
@@ -238,11 +294,13 @@ passes explicit build and push Make targets, and uploaded results use the
 
 ## Output
 
-- `.github/workflows/*` and `.github/actions/*` committed
+- `.qs-factory/pipeline/test-suite-spec.yaml` and `.qs-factory/pipeline/test-suite-spec-refined.yaml`
+- `.qs-factory/pipeline/test-suite-manifest.yaml` with implementation and validation results
+- `.github/workflows/*` and `.github/actions/*` created or updated
 - `scripts/ci/*` for Kind/registry
 - `scripts/bump_release.py` and `scripts/bump-release.manifest.json` when dev version bumps or dev→main promotion are enabled
 - Makefile targets documented in README (via `rh-qs-document`)
-- Branch protection updated with correct required checks
+- Required branch protection checks documented for a GitHub administrator
 
 ## Next skill
 

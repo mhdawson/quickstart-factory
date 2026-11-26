@@ -29,7 +29,7 @@ The pipeline passes structured artifacts through these files, in order:
 | 3 | `implementation-manifest.yaml` | rh-qs-implement | rh-qs-deploy | Manifest | `.rhoai-qs/<slug>/.qs-factory/pipeline/` |
 | 4 | `deploy-manifest.yaml` | rh-qs-deploy | rh-qs-security | Manifest | `.rhoai-qs/<slug>/.qs-factory/pipeline/` |
 | 5 | `security-report.yaml` | rh-qs-security | rh-qs-debug-and-deploy | Report | `.rhoai-qs/<slug>/.qs-factory/pipeline/` |
-| 6 | `deploy-state.yaml` | rh-qs-debug-and-deploy | rh-qs-document | State | `.rhoai-qs/<slug>/.qs-factory/pipeline/` |
+| 6 | `deploy-state.yaml` | rh-qs-debug-and-deploy | rh-qs-test-suite (optional), rh-qs-document | State | `.rhoai-qs/<slug>/.qs-factory/pipeline/` |
 | 7 | `doc-manifest.yaml` | rh-qs-document | rh-qs-ship | Manifest | `.rhoai-qs/<slug>/.qs-factory/pipeline/` |
 
 Additionally, the PRD (`.rhoai-qs/<slug>/.qs-factory/prds/prd.md`) produced by rh-qs-discovery is a Markdown file, not YAML, and its format is defined by the PRD template — not this document.
@@ -543,7 +543,7 @@ dependencies:
 ## 6. deploy-state.yaml
 
 **Producer:** rh-qs-debug-and-deploy
-**Consumer:** rh-qs-document
+**Consumers:** rh-qs-test-suite (optional), rh-qs-document
 **Category:** State (cluster health snapshot)
 
 Captures the final state of all deployed resources after the debug loop completes.

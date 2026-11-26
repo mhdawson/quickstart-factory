@@ -37,6 +37,14 @@ def load_test_config(path: Path) -> tuple[dict[str, object] | None, list[str]]:
     context = config.get("question-answer-context")
     if context is not None and (not isinstance(context, str) or not context.strip()):
         errors.append("question-answer-context must be a non-empty string when provided")
+    validate_qs_files = config.get("validate-qs-files", False)
+    if isinstance(validate_qs_files, str):
+        if validate_qs_files.lower() not in {"yes", "no"}:
+            errors.append("validate-qs-files must be yes or no when provided")
+        else:
+            validate_qs_files = validate_qs_files.lower() == "yes"
+    elif not isinstance(validate_qs_files, bool):
+        errors.append("validate-qs-files must be yes or no when provided")
     validation_options = config.get("validation-options", {})
     if not isinstance(validation_options, dict):
         return None, ["validation-options must be a YAML mapping when provided"]
@@ -95,6 +103,7 @@ def load_test_config(path: Path) -> tuple[dict[str, object] | None, list[str]]:
     return {
         "run_skill_command": command.strip() if command is not None else None,
         "question_answer_context": context.strip() if context is not None else None,
+        "validate_qs_files": validate_qs_files,
         "additional_validation_instructions": validation_instructions.strip() if validation_instructions is not None else None,
         "validation_mode": validation_mode,
         "execution_network": network,

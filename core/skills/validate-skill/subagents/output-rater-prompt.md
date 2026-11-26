@@ -16,12 +16,13 @@ Rate one completed fixture case from 1 to 10 against its approved expected-outpu
 - `case_name`
 - `comparison_json`: output from `scripts/compare_baseline.py`
 - `validation_mode`: `full-baseline` or `targeted`, from `test-config.yaml`'s `validation-options.mode`
+- `validate_qs_files`: whether `test-config.yaml` opts `.qs-factory/` paths into evaluation
 - `additional_validation_instructions`: optional text from `test-config.yaml`'s `validation-options.additional-instructions`
 - `conversation`: the recorded caller-to-target-skill messages from the completed case runner; use this as evidence for interaction-specific assertions, not as a self-assessment or score
 
 ## Instructions
 
-1. Read the fixture contract and the comparison JSON. In `full-baseline` mode, treat every file and directory path in the expected-output repository as a required post-run artifact. In `targeted` mode, use the comparison inventory only as evidence and do not treat its differences as defects unless they are named by the additional validation instructions.
+1. Read the fixture contract and the comparison JSON. Unless `validate_qs_files` is true, do not inspect or evaluate expected or actual files under `.qs-factory/`, or use conversation claims about those files as scoring evidence; the comparator excludes them from all inventories. When it is true, evaluate those paths using the normal mode rules. In `full-baseline` mode, treat every applicable file and directory path in the expected-output repository as a required post-run artifact. In `targeted` mode, use the comparison inventory only as evidence and do not treat its differences as defects unless they are named by the additional validation instructions.
 2. Use the script's file inventory, required-path results, and hashes as evidence. Inspect content only where needed to judge a reported difference or targeted criterion.
    For targeted criteria about questions, answers, or other user interaction, use the supplied runner conversation as the observable evidence. Do not require that conversational behavior to be duplicated in generated repository files.
 3. In `full-baseline` mode, allow only documented dynamic differences. Do not penalize unrelated input files that predate the run.

@@ -18,6 +18,7 @@ test/skills/<skill-name>/<case-name>/
 run-skill-command: Add nightly testing to qs-test-quickstart.
 question-answer-context: |
   The test fixture is a disposable quickstart. Use only details in its files.
+validate-qs-files: yes
 validation-options:
   mode: full-baseline
   additional-instructions: |
@@ -41,6 +42,10 @@ To run the target skill without a supplemental prompt, use an empty mapping:
 `run-skill-command` is optional. When present, it must be a non-empty string and is the exact user request sent to the target skill. When absent, the target skill is invoked without an added user request. It is never executable shell. State the target slug explicitly as `qs-test-quickstart` when the target skill needs a slug.
 
 `question-answer-context` is optional and must be a non-empty string when present. It is additional factual context the runner can use to answer a target skill's question. It cannot approve external actions, disclose a credential, or choose whether to overwrite unanticipated user work.
+
+`validate-qs-files` is optional and defaults to `no`. When omitted or set to `no`, paths under the quickstart's `.qs-factory/` directory are excluded from comparison and rating, including extra files and directories. Set it to `yes` when those generated pipeline files are part of the fixture's expected behavior. Unquoted YAML `yes`/`no` and boolean `true`/`false` are accepted.
+
+If a targeted `additional-instructions` evaluates a file under `.qs-factory/`, set `validate-qs-files: yes` for that case.
 
 `validation-options` is optional and must be a YAML mapping when present. It controls evaluation only; it does not change how the target skill is invoked. Its optional `additional-instructions` entry must be a non-empty string when present. It is passed only to the output rater to add fixture-specific checks or explain what differences matter. In `full-baseline` mode, it cannot waive required baseline artifacts; in either mode, it cannot authorize external actions.
 
@@ -68,8 +73,8 @@ validation-options:
 
 The rater compares the actual copied quickstart to `expected-output-repo/` as follows:
 
-- Every baseline path is required: regular files are compared by content, and directories (including empty directories) are compared by presence and type.
-- Additional actual files or directories are reported as differences.
+- Every baseline path outside `.qs-factory/` is required by default: regular files are compared by content, and directories (including empty directories) are compared by presence and type. `.qs-factory/` paths are included only when `validate-qs-files: yes`.
+- Additional actual files or directories outside `.qs-factory/` are reported as differences by default.
 - Use `comparison-ignore` only for genuinely nondeterministic paths, such as timestamped reports. Each line is a path glob relative to the quickstart root; blank lines and `#` comments are ignored.
 - A baseline is an approved oracle, not permission to copy it into the actual output during ordinary validation.
 

@@ -176,6 +176,7 @@ def write_spec(root: Path, skill: str, case: dict[str, Any], run_at: str, report
                 "test_config": case["test_config"],
                 "run_skill_command": case.get("run_skill_command"),
                 "question_answer_context": case.get("question_answer_context"),
+                "validate_qs_files": case.get("validate_qs_files", False),
                 "validation_options": {
                     "mode": case["validation_mode"],
                     "additional_instructions": case.get("additional_validation_instructions"),
@@ -594,6 +595,7 @@ def main() -> int:
                 f"comparison_json={rater_inputs['comparison_json']}\n"
                 f"conversation={rater_inputs['conversation_json']}\n"
                 f"validation_mode={case.get('validation_mode', 'full-baseline')}\n"
+                f"validate_qs_files={str(case.get('validate_qs_files', False)).lower()}\n"
                 f"additional_validation_instructions={case.get('additional_validation_instructions') or 'null'}\n"
             )
             rater = adapter_command(
@@ -661,6 +663,7 @@ def main() -> int:
                 "evidence": [
                     *baseline_evidence,
                     f"Target command: {case.get('run_skill_command') or 'none'}",
+                    f".qs-factory evaluation: {'enabled' if case.get('validate_qs_files', False) else 'ignored'}",
                     f"Network profile: {args.network_profile}",
                     f"Preflight status: {preflight_json.get('status', 'unknown')}",
                     f"Runner tree hash: {completion.get('output_tree_hash', 'unknown')}",

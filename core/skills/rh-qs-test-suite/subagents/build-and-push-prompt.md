@@ -15,12 +15,15 @@ You never run `oc`, `kubectl`, `gh secret set`, or a container engine. You gener
 ## Inputs
 
 - `repo_root`: absolute or relative path to the quickstart repository
+- `spec_path`: path to the refined test-suite spec (required for both invocation modes)
 - `target_mapping`: optional pre-confirmed mapping containing `version`, `build`, `publish`, variable names, and image repositories
 - `invocation_mode`: `"standalone"` or `"full-pipeline"` — affects only final report framing
 
 ## Required Target Contract
 
 Resolve the Make targets, variable contract, and image repositories before writing anything:
+
+Read `{spec_path}` first. Confirm that it includes image publishing and that this workflow is in the file list. In `full-pipeline` mode, follow the image repositories, variables, and workflow scope in the refined spec. If repository evidence contradicts the spec, stop and report the mismatch to the orchestrator.
 
 1. A target that prints the image release version
 2. A target that builds all images

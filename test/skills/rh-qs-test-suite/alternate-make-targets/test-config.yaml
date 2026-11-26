@@ -1,4 +1,5 @@
 run-skill-command: Add nightly testing to qs-test-quickstart.
+validate-qs-files: yes
 execution:
   network: required
   external-dependencies:

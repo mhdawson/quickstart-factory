@@ -8,7 +8,7 @@ As skills under `core/skills/` change, we need a repeatable way to prove a skill
 
 - **Ownership:** the test quickstart's own repo is **private, under one of our personal GitHub accounts** (mtalvi's or Yossi's) — **not** under the `rh-ai-quickstart` org. Access is limited to the two of us.
 - **One long-lived slug**, not a fresh one per cycle. The commit template below uses a `(test)` suffix on the quickstart name because we expect to run the same test quickstart through the same skills over and over as the factory changes — test history accumulates as commits over time. Only reset the slug if a clean re-run is deliberately useful (e.g. a major pipeline restructuring).
-- **In scope:** `rh-qs-discovery` → `rh-qs-architect` (+ `rh-qs-secure`) → `rh-qs-scaffold` → `rh-qs-implement` → `rh-qs-verify-build` → `rh-qs-deploy` → `rh-qs-test-suite` → `rh-qs-verify-deploy` → `rh-qs-document`. Backlog-management skills (`gh-backlog-reader`, `pipeline-grooming`, etc.) can also be exercised this way if we want to test a change to one of them.
+- **In scope:** `rh-qs-discovery` → `rh-qs-architect` (+ `rh-qs-secure`) → `rh-qs-scaffold` → `rh-qs-implement` → `rh-qs-verify-build` → `rh-qs-deploy` → `rh-qs-debug-and-deploy` → `rh-qs-test-suite` → `rh-qs-verify-deploy` → `rh-qs-document`. Backlog-management skills (`gh-backlog-reader`, `pipeline-grooming`, etc.) can also be exercised this way if we want to test a change to one of them.
 - **Out of scope for now:** `rh-qs-ship`. See [§6](#6-out-of-scope-rh-qs-ship) for why, and how we'd extend this later if we change our minds.
 
 ## 2. How the Test Quickstart Is Set Up
